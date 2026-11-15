@@ -3,10 +3,11 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { ethers } from "ethers";
-import { growthKeyword } from "./growth.js";
+import { growthKeyword, growthStart, growthSummary } from "./growth.js";
 
 const TOKEN = process.env.TG_BOT_TOKEN || "";
 const BOT = process.env.TG_BOT_NAME || "chess_betlolbot";
+const OWNER = process.env.TG_OWNER_ID || ""; // Telegram ID владельца для /stats
 const FILE = process.env.TG_FILE || "./data/tg.json";
 export const tgEnabled = TOKEN !== "";
 const API = `https://api.telegram.org/bot${TOKEN}`;
@@ -97,6 +98,14 @@ async function handle(m: any) {
   if (typeof chat !== "number" || m?.chat?.type !== "private") return;
   const lang: "ru" | "en" = String(m?.from?.language_code || "").startsWith("ru") ? "ru" : "en";
   const say = (ru: string, en: string) => call("sendMessage", { chat_id: chat, text: lang === "ru" ? ru : en });
+  if (/^\/id(?:@\w+)?$/.test(text)) { await say(`Ваш Telegram ID: ${chat}`, `Your Telegram ID: ${chat}`); return; }
+  if (/^\/stats(?:@\w+)?$/.test(text)) {
+    if (OWNER && String(chat) === OWNER) await call("sendMessage", { chat_id: chat, text: growthSummary() });
+    else await say("Команда только для владельца.", "Owner only.");
+    return;
+  }
+  const sm = /^\/start(?:@\w+)?\s+([A-Za-z]{2,10}_\d{1,4})$/.exec(text);
+  if (sm) growthStart(sm[1]); // источник из ссылки в ролике
   if (await growthKeyword(chat, text, lang, (body) => call("sendMessage", body))) return; // кодовое слово MATE / МАТ
   const mm = /^\/start(?:@\w+)?\s+link_([0-9a-f]{16})$/.exec(text);
   if (mm) {

@@ -7,11 +7,11 @@ const IDS_FILE = process.env.PUZZLES_FILE || "./data/puzzles.json";
 const GAME = process.env.GAME_URL || "https://t.me/chess_betlolbot/game";
 const SITE = process.env.SITE_URL || "https://himeet.online";
 
-type Stats = { keyword: Record<string, number>; total: number };
-let stats: Stats = { keyword: {}, total: 0 };
+type Stats = { keyword: Record<string, number>; total: number; src: Record<string, number> };
+let stats: Stats = { keyword: {}, total: 0, src: {} };
 try {
   const o = JSON.parse(fs.readFileSync(FILE, "utf8")) as Stats;
-  if (o && typeof o === "object") stats = { keyword: o.keyword || {}, total: Number(o.total) || 0 };
+  if (o && typeof o === "object") stats = { keyword: o.keyword || {}, total: Number(o.total) || 0, src: o.src || {} };
 } catch { /* файла ещё нет */ }
 
 function save() {
@@ -78,9 +78,19 @@ export async function growthKeyword(
   return true;
 }
 
-/** Сводка для владельца (понадобится для команды /stats) */
+/** Запоминаем источник: /start shorts_002 -> площадка shorts (YouTube Shorts, TikTok, Reels, VK, tg) */
+export function growthStart(code: string) {
+  const m = /^([a-z]{2,10})_(\d{1,4})$/i.exec(String(code || ""));
+  if (!m) return;
+  const k = m[1].toLowerCase();
+  stats.src[k] = (stats.src[k] || 0) + 1;
+  save();
+}
+
+/** Сводка для владельца: команда /stats */
 export function growthSummary(): string {
   const days = Object.keys(stats.keyword).sort().slice(-7);
   const rows = days.map((d) => `${d}: ${stats.keyword[d]}`).join("\n");
-  return `Слово MATE/МАТ: всего ${stats.total}\n${rows || "пока нет данных"}`;
+  const src = Object.entries(stats.src).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`).join("\n");
+  return `Слово MATE/МАТ: всего ${stats.total}\n${rows || "пока нет данных"}\n\nПереходы по ссылкам из роликов:\n${src || "пока нет данных"}`;
 }

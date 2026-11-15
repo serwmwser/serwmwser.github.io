@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { ethers } from "ethers";
+import { growthKeyword } from "./growth.js";
 
 const TOKEN = process.env.TG_BOT_TOKEN || "";
 const BOT = process.env.TG_BOT_NAME || "chess_betlolbot";
@@ -96,6 +97,7 @@ async function handle(m: any) {
   if (typeof chat !== "number" || m?.chat?.type !== "private") return;
   const lang: "ru" | "en" = String(m?.from?.language_code || "").startsWith("ru") ? "ru" : "en";
   const say = (ru: string, en: string) => call("sendMessage", { chat_id: chat, text: lang === "ru" ? ru : en });
+  if (await growthKeyword(chat, text, lang, (body) => call("sendMessage", body))) return; // кодовое слово MATE / МАТ
   const mm = /^\/start(?:@\w+)?\s+link_([0-9a-f]{16})$/.exec(text);
   if (mm) {
     sweep();

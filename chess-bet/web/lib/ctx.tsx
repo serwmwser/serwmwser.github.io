@@ -2,6 +2,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { ThirdwebProvider } from "thirdweb/react";
 import { DICT, detectLang, isRtl, Key, Lang } from "./i18n";
+import { captureRef } from "./ref";
 
 export const BOARDS = {
   emerald: ["#e6efe3", "#4f8a6b"],
@@ -48,6 +49,7 @@ export function Providers({ children }: { children: ReactNode }) {
     if (b && b in BOARDS) setBoardS(b);
     setAgreedS(ls.get("agreed") === "1");
   }, []);
+  useEffect(() => { captureRef(); }, []); // запоминаем пригласившего (?ref=) на любой странице
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = isRtl(lang) ? "rtl" : "ltr";

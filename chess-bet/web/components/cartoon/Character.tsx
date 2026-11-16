@@ -10,6 +10,7 @@ export const OUT = "#2a2140";
 
 /** Стили и анимации персонажей (подключаются один раз на странице: <style>{CARTOON_CSS}</style>). Класс cc-still у фигуры отключает анимацию. */
 export const CARTOON_CSS = `
+.cc [stroke-opacity="0.55"] { stroke-opacity: 1; stroke-width: 3.2px; stroke-linejoin: round; paint-order: stroke fill; }
 .cc .tg { transform-box: fill-box; transform-origin: 50% 100%; }
 .cc .eyes { transform-origin: 50% 50%; }
 .cc .tail { transform-box: fill-box; transform-origin: 0% 50%; }

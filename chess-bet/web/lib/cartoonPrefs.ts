@@ -15,9 +15,11 @@ export const VOICE_PACKS: VoicePack[] = [
 ];
 export const packOf = (id: string): VoicePack => VOICE_PACKS.find((p) => p.id === id) ?? VOICE_PACKS[0];
 
-// Яркие доски: только для мультяшных фигур (обычные доски не меняются)
+// Яркие доски: только для мультяшных фигур (обычные доски не меняются).
+// «Бирюза» идёт первой: на ней и белые, и чёрные фигуры читаются чётко и не сливаются с клетками.
 export type CBoard = { id: string; ru: string; en: string; light: string; dark: string };
 export const CARTOON_BOARDS: CBoard[] = [
+  { id: "teal", ru: "Бирюза", en: "Teal", light: "#FFDF9C", dark: "#3FC1A5" },
   { id: "lime", ru: "Лайм", en: "Lime", light: "#F2FBD9", dark: "#58CC02" },
   { id: "sky", ru: "Небо", en: "Sky", light: "#E6F7FF", dark: "#1CB0F6" },
   { id: "candy", ru: "Конфета", en: "Candy", light: "#FFF0F8", dark: "#FF86D0" },
@@ -28,7 +30,7 @@ export const CARTOON_BOARDS: CBoard[] = [
 export const cboardOf = (id: string): CBoard => CARTOON_BOARDS.find((b) => b.id === id) ?? CARTOON_BOARDS[0];
 
 export type CartoonPrefs = { pawnW: number; pawnB: number; pack: string; cboard: string; team: "clay" | "knights" };
-export const DEFAULT_PREFS: CartoonPrefs = { pawnW: 1, pawnB: 3, pack: "std", cboard: "lime", team: "clay" };
+export const DEFAULT_PREFS: CartoonPrefs = { pawnW: 1, pawnB: 3, pack: "std", cboard: "teal", team: "clay" };
 const KEY = "cb_cprefs";
 const EVT = "cb-cprefs";
 

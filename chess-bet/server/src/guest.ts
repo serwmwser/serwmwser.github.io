@@ -23,6 +23,8 @@ CREATE INDEX IF NOT EXISTS guest_msgs_g ON guest_msgs(g, id);
 CREATE TABLE IF NOT EXISTS guest_reports(
   id INTEGER PRIMARY KEY AUTOINCREMENT, reporter TEXT NOT NULL, g TEXT NOT NULL, inviter TEXT NOT NULL,
   msg INTEGER NOT NULL, reason TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS guest_nicks(
+  name TEXT PRIMARY KEY, addr TEXT NOT NULL, seen INTEGER NOT NULL);
 `);
 // миграция: блокировка гостя пригласившим
 const hasCol = (t: string, c: string) => (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).some((r) => r.name === c);
@@ -40,7 +42,7 @@ let notify: (to: string, guestName: string) => void = () => {};
 export function setGuestNotify(fn: (to: string, guestName: string) => void) { notify = fn; }
 
 const clean = (s: unknown, max: number) =>
-  String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E<>]/g, "").trim().slice(0, max);
+  String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F‪-‮<>]/g, "").trim().slice(0, max);
 
 const hits = new Map<string, number[]>();
 function limited(key: string, max: number, ms: number): boolean {
@@ -63,11 +65,31 @@ function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
-/** Пригласивший по нику или адресу: возвращает адрес и ник или null */
-function resolveInviter(refIn: unknown): { addr: string; name: string } | null {
+type Inv = { addr: string; name: string };
+
+/** Запоминает ник пользователя: после смены ника старая ссылка продолжает вести к нему */
+function rememberNick(addr: string, name: string) {
+  const n = String(name || "").trim().toLowerCase();
+  if (!n || !NAME_RE.test(n)) return;
+  try { db.prepare("INSERT INTO guest_nicks(name,addr,seen) VALUES(?,?,?) ON CONFLICT(name) DO UPDATE SET addr=excluded.addr, seen=excluded.seen").run(n, addr, Date.now()); }
+  catch (e) { console.error("guest nick", e); }
+}
+
+/** Пригласивший по нику или адресу: возвращает адрес и текущий ник или null.
+ *  Ник ищется без учёта регистра; прежние ники (запомненные и автоматические вида u + 8 символов адреса) тоже находят пользователя. */
+function resolveInviter(refIn: unknown): Inv | null {
   const r = String(refIn ?? "").trim().toLowerCase();
-  if (ADDR_RE.test(r)) return (db.prepare("SELECT addr,name FROM users WHERE addr=? AND banned=0").get(r) as { addr: string; name: string } | undefined) ?? null;
-  if (NAME_RE.test(r)) return (db.prepare("SELECT addr,name FROM users WHERE name=? AND banned=0").get(r) as { addr: string; name: string } | undefined) ?? null;
+  if (ADDR_RE.test(r)) return (db.prepare("SELECT addr,name FROM users WHERE addr=? AND banned=0").get(r) as Inv | undefined) ?? null;
+  if (!NAME_RE.test(r)) return null;
+  const cur = db.prepare("SELECT addr,name FROM users WHERE lower(name)=? AND banned=0").get(r) as Inv | undefined;
+  if (cur) { rememberNick(cur.addr, cur.name); return cur; }
+  const old = db.prepare("SELECT u.addr addr, u.name name FROM guest_nicks n JOIN users u ON u.addr=n.addr WHERE n.name=? AND u.banned=0").get(r) as Inv | undefined;
+  if (old) return old;
+  const auto = /^u([0-9a-f]{8})$/.exec(r); // автоматический ник: u + первые 8 символов адреса
+  if (auto) {
+    const rows = db.prepare("SELECT addr,name FROM users WHERE addr LIKE ? AND banned=0 LIMIT 2").all("0x" + auto[1] + "%") as Inv[];
+    if (rows.length === 1) return rows[0];
+  }
   return null;
 }
 
@@ -172,6 +194,8 @@ export async function handleGuest(req: http.IncomingMessage, res: http.ServerRes
       return out(200, { ok: true, n });
     }
     if (req.method === "GET" && p === "/api/guest/inbox") {
+      const me = db.prepare("SELECT name FROM users WHERE addr=?").get(viewer) as { name: string } | undefined;
+      if (me) rememberNick(viewer, me.name); // пригласивший открыл блок гостей: его ник запоминается
       const rows = db.prepare(`SELECT g, MAX(id) mid, SUM(CASE WHEN side='g' AND seen=0 THEN 1 ELSE 0 END) unread
         FROM guest_msgs WHERE inviter=? GROUP BY g ORDER BY mid DESC LIMIT 50`).all(viewer) as { g: string; mid: number; unread: number }[];
       const items = rows.map((r) => {

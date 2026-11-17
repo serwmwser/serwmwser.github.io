@@ -1,7 +1,51 @@
-// Минимальный сервис-воркер: нужен браузеру для установки приложения; ничего не кэшируем, чтобы не залипали старые версии
+// HiMeet сервис-воркер: установка приложения, push-уведомления и офлайн-доступ к гостевому чату (/i/).
+// Кэшируется только страница приглашения и неизменяемые файлы /_next/static/; остальное сайт берёт из сети, чтобы не залипали старые версии.
+const CACHE = "hm-offline-v1";
+const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, ""); // "" на himeet.online
+
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
-self.addEventListener("fetch", () => {});
+self.addEventListener("activate", (e) => e.waitUntil((async () => {
+  const keys = await caches.keys();
+  await Promise.all(keys.filter((k) => k.startsWith("hm-offline-") && k !== CACHE).map((k) => caches.delete(k)));
+  await self.clients.claim();
+})()));
+
+self.addEventListener("fetch", (e) => {
+  const req = e.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // API и чужие домены не трогаем
+
+  // Файлы сборки с хэшем в имени не меняются: берём из кэша, иначе из сети и запоминаем
+  if (url.pathname.startsWith(BASE + "/_next/static/")) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const hit = await cache.match(req);
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
+      return res;
+    })());
+    return;
+  }
+
+  // Страница приглашения: сначала сеть (свежая версия), без сети отдаём сохранённую копию
+  if (req.mode === "navigate" && url.pathname.startsWith(BASE + "/i")) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const key = BASE + "/i/";
+      try {
+        const res = await fetch(req);
+        if (res && res.ok) cache.put(key, res.clone()).catch(() => {});
+        return res;
+      } catch (err) {
+        const hit = await cache.match(key);
+        if (hit) return hit;
+        throw err;
+      }
+    })());
+  }
+});
 
 // HiMeet push: показ уведомлений о звонках и сообщениях
 self.addEventListener("push", (e) => {

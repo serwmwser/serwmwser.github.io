@@ -9,7 +9,8 @@ import ShareMenu from "./ShareMenu";
 
 type Tpl = "chat" | "ads" | "chess";
 
-/** HiMeet invite: карточка «Пригласить друга». Три шаблона приглашения, каждый ведёт в свой раздел, а не на главную. */
+/** HiMeet invite: карточка «Пригласить друга». Три шаблона приглашения, каждый ведёт в свой раздел, а не на главную.
+ *  Ссылка в чат короткая: /i/?u=ваш_ник (если ника ещё нет, используется ссылка с адресом). */
 export default function InviteFriend() {
   const { lang } = useApp();
   const ru = lang === "ru";
@@ -20,16 +21,13 @@ export default function InviteFriend() {
   const origin = typeof location !== "undefined" ? location.origin : "https://himeet.online";
 
   const withRef = (path: string) => absoluteUrl(path) + (addr ? "?ref=" + addr : "");
+  const chatLink = me?.name ? buildInviteLink(origin, me.name) : addr ? `${origin}/i/?ref=${addr}` : absoluteUrl("/");
 
   const T: Record<Tpl, { label: string; hint: string; url: string; text: string }> = {
     chat: {
       label: ru ? "💬 Чат с переводом" : "💬 Chat with translation",
       hint: ru ? "Друг сразу попадёт в диалог с вами, без регистрации." : "Your friend lands straight in a chat with you, no sign-up.",
-      url: addr
-        ? buildInviteLink(origin, addr, me?.name || "", ru
-            ? "Привет! Я в HiMeet: здесь мы переписываемся с автопереводом. Напиши мне на своём языке."
-            : "Hi! I'm on HiMeet: here we chat with automatic translation. Write to me in your own language.")
-        : absoluteUrl("/"),
+      url: chatLink,
       text: ru ? "Привет! Заходи в HiMeet: общаемся на любых языках, чат сам переводит. Ссылка без установки:" : "Hi! Join me on HiMeet: we chat in any language and the chat translates. No install needed:",
     },
     ads: {
@@ -57,6 +55,7 @@ export default function InviteFriend() {
         ))}
       </div>
       <p className="text-xs opacity-70">{cur.hint}</p>
+      <p className="text-xs font-mono opacity-80 break-all" aria-label={ru ? "Ссылка приглашения" : "Invitation link"}>{cur.url}</p>
       <ShareMenu url={cur.url} text={cur.text} label={ru ? "Пригласить друга" : "Invite a friend"} className="btn btn-primary w-full justify-center" />
     </section>
   );

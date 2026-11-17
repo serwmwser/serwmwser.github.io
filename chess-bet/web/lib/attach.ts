@@ -4,6 +4,7 @@ import { API_URL } from "./config";
 import { errText } from "./social";
 
 export const FILE_MAX = 5 * 1024 * 1024;
+export const GUEST_FILE_MAX = 2 * 1024 * 1024; // гость без регистрации: только фото до 2 МБ
 const FILE_RE = /^\[file:([a-f0-9]{20}\.(?:jpg|png|webp|pdf)):(\d{1,5})\]$/;
 const FILE_ANY = /\[file:[a-f0-9]{20}\.(?:jpg|png|webp|pdf):\d{1,5}\]/g;
 
@@ -46,16 +47,20 @@ async function shrink(f: File): Promise<Blob> {
   } catch { return f; }
 }
 
-/** Загружает фото или PDF (нужен вход), возвращает путь /media/... и размер */
+/** Загружает фото или PDF (нужен вход; гость с токеном guest:<id> может только фото), возвращает путь /media/... и размер */
 export async function uploadFile(token: string, file: File): Promise<{ path: string; bytes: number }> {
-  const okType = /^image\/(jpeg|png|webp)$/.test(file.type) || file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  const guest = token.startsWith("guest:");
+  const isImg = /^image\/(jpeg|png|webp)$/.test(file.type);
+  const okType = isImg || (!guest && (file.type === "application/pdf" || /\.pdf$/i.test(file.name)));
   if (!okType) throw new Error("bad_type");
   const blob = await shrink(file);
-  if (blob.size > FILE_MAX) throw new Error("too_big");
+  if (blob.size > (guest ? GUEST_FILE_MAX : FILE_MAX)) throw new Error("too_big");
   const [wallet, tok] = token.split("|");
-  const r = await fetch(`${API_URL}/api/upload-file`, {
+  const r = await fetch(`${API_URL}${guest ? "/api/guest/upload-file" : "/api/upload-file"}`, {
     method: "POST",
-    headers: { "content-type": "application/octet-stream", ...(tok ? { authorization: `Bearer ${tok}`, "x-wallet": wallet } : {}) },
+    headers: guest
+      ? { "content-type": "application/octet-stream", "x-guest": token.slice(6) }
+      : { "content-type": "application/octet-stream", ...(tok ? { authorization: `Bearer ${tok}`, "x-wallet": wallet } : {}) },
     body: blob,
   });
   const j = (await r.json().catch(() => ({}))) as { ok?: boolean; path?: string; error?: string };
@@ -66,7 +71,7 @@ export async function uploadFile(token: string, file: File): Promise<{ path: str
 export function fileErr(e: unknown, ru: boolean): string {
   const m = (e as Error)?.message;
   if (m === "bad_type" || m === "bad_file") return ru ? "Можно прикрепить фото (JPG, PNG, WebP) или PDF" : "You can attach a photo (JPG, PNG, WebP) or a PDF";
-  if (m === "too_big") return ru ? "Файл больше 5 МБ" : "The file is larger than 5 MB";
-  if (m === "slow_down") return ru ? "Слишком много файлов. Подождите немного" : "Too many files. Please wait a little";
+  if (m === "too_big") return ru ? "Файл слишком большой (фото для гостя до 2 МБ, файлы до 5 МБ)" : "The file is too large (guest photos up to 2 MB, files up to 5 MB)";
+  if (m === "slow_down") return ru ? "Слишком много файлов. Подождите немного или войдите в аккаунт" : "Too many files. Please wait a little or sign in";
   return errText(e, ru);
 }

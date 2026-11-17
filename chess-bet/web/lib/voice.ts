@@ -4,6 +4,9 @@ import { API_URL } from "./config";
 import { errText } from "./social";
 
 export const VOICE_MAX_SEC = 120;
+export const GUEST_VOICE_MAX_SEC = 30; // гость без регистрации: до 30 секунд
+/** Гость без регистрации передаёт вместо токена строку guest:<id гостя> */
+export const guestToken = (g: string) => "guest:" + g;
 const VOICE_RE = /^\[voice:([a-f0-9]{20}\.(?:webm|ogg|m4a)):(\d{1,3})\]$/;
 
 /** Текст сообщения для голоса: путь /media/<файл> и длительность в секундах */
@@ -26,12 +29,15 @@ export function pickMime(): string {
 
 export const canRecord = () => typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined";
 
-/** Загружает запись на сервер (нужен вход), возвращает путь вида /media/... */
+/** Загружает запись на сервер (нужен вход или токен гостя guest:<id>), возвращает путь вида /media/... */
 export async function uploadVoice(token: string, blob: Blob): Promise<string> {
+  const guest = token.startsWith("guest:");
   const [wallet, tok] = token.split("|");
-  const r = await fetch(`${API_URL}/api/upload-voice`, {
+  const r = await fetch(`${API_URL}${guest ? "/api/guest/upload-voice" : "/api/upload-voice"}`, {
     method: "POST",
-    headers: { "content-type": "application/octet-stream", ...(tok ? { authorization: `Bearer ${tok}`, "x-wallet": wallet } : {}) },
+    headers: guest
+      ? { "content-type": "application/octet-stream", "x-guest": token.slice(6) }
+      : { "content-type": "application/octet-stream", ...(tok ? { authorization: `Bearer ${tok}`, "x-wallet": wallet } : {}) },
     body: blob,
   });
   const j = (await r.json().catch(() => ({}))) as { ok?: boolean; path?: string; error?: string };
@@ -70,6 +76,7 @@ export function voiceErr(e: unknown, ru: boolean): string {
   const m = (e as Error)?.message;
   if (m === "bad_audio") return ru ? "Не удалось обработать запись" : "Could not process the recording";
   if (m === "too_big") return ru ? "Запись слишком большая" : "The recording is too large";
+  if (m === "slow_down") return ru ? "Слишком много голосовых. Подождите немного или войдите в аккаунт" : "Too many voice messages. Please wait or sign in";
   if (m === "NotAllowedError" || (e as Error)?.name === "NotAllowedError") return micHelp(ru);
   if ((e as Error)?.name === "NotFoundError") return ru ? "Микрофон не найден" : "No microphone found";
   if ((e as Error)?.name === "NotReadableError" || /audio source/i.test(String((e as Error)?.message || ""))) {

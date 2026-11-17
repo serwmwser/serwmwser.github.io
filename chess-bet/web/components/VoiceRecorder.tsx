@@ -6,10 +6,11 @@ import { VOICE_MAX_SEC, canRecord, encodeVoice, openMic, pickMime, uploadVoice, 
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-/** Кнопка 🎤: запись до 2 минут, «✕» отменяет, «➤» отправляет. onVoice получает готовый текст сообщения */
-export default function VoiceRecorder({ token, disabled, onVoice }: { token: string; disabled?: boolean; onVoice: (text: string) => Promise<void> }) {
+/** Кнопка 🎤: запись до 2 минут (maxSec меняет предел, для гостей 30 секунд), «✕» отменяет, «➤» отправляет. onVoice получает готовый текст сообщения */
+export default function VoiceRecorder({ token, disabled, maxSec, onVoice }: { token: string; disabled?: boolean; maxSec?: number; onVoice: (text: string) => Promise<void> }) {
   const { lang, toast } = useApp();
   const ru = lang === "ru";
+  const limit = Math.min(VOICE_MAX_SEC, maxSec ?? VOICE_MAX_SEC);
   const [state, setState] = useState<"idle" | "rec" | "up">("idle");
   const [sec, setSec] = useState(0);
   const rec = useRef<MediaRecorder | null>(null);
@@ -63,7 +64,7 @@ export default function VoiceRecorder({ token, disabled, onVoice }: { token: str
         setState("up");
         try {
           const path = await uploadVoice(token, new Blob(chunks.current, { type }));
-          await onVoice(encodeVoice(path, Math.min(secs, VOICE_MAX_SEC)));
+          await onVoice(encodeVoice(path, Math.min(secs, limit)));
         } catch (e) { toast(voiceErr(e, ru), "err"); }
         finally { setState("idle"); }
       };
@@ -76,7 +77,7 @@ export default function VoiceRecorder({ token, disabled, onVoice }: { token: str
       timer.current = setInterval(() => {
         const s = Math.floor((Date.now() - t0.current) / 1000);
         setSec(s);
-        if (s >= VOICE_MAX_SEC) finish("send");
+        if (s >= limit) finish("send");
       }, 250);
     } catch (e) { opening.current = false; release(); setState("idle"); toast(voiceErr(e, ru) + " [" + ((e as Error)?.name || "?") + "]", "err"); }
   };
@@ -86,6 +87,7 @@ export default function VoiceRecorder({ token, disabled, onVoice }: { token: str
       <div className="flex items-center gap-2 text-sm">
         <span aria-hidden className="inline-block w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: "#e0245e" }} />
         <span className="tabular-nums w-10">{fmt(sec)}</span>
+        {maxSec ? <span className="text-xs opacity-60">/ {fmt(limit)}</span> : null}
         <button type="button" className="btn btn-ghost !py-1.5 !px-3" onClick={() => finish("cancel")} aria-label={ru ? "Отменить запись" : "Cancel recording"}>✕</button>
         <button type="button" className="btn btn-primary !py-1.5 !px-3" onClick={() => finish("send")} aria-label={ru ? "Отправить голосовое" : "Send voice message"}>➤</button>
       </div>

@@ -3,8 +3,9 @@ import { useRef, useState } from "react";
 import { useApp } from "@/lib/ctx";
 import { encodeFile, fileErr, uploadFile } from "@/lib/attach";
 
-/** Кнопка «прикрепить файл» (фото или PDF до 5 МБ): после загрузки отдаёт служебную строку вложения в onFile */
-export default function AttachButton({ token, onFile, disabled }: { token: string; onFile: (marker: string) => void | Promise<void>; disabled?: boolean }) {
+/** Кнопка «прикрепить файл» (фото или PDF до 5 МБ): после загрузки отдаёт служебную строку вложения в onFile.
+ *  photosOnly: только фото до 2 МБ (для гостей без регистрации) */
+export default function AttachButton({ token, onFile, disabled, photosOnly }: { token: string; onFile: (marker: string) => void | Promise<void>; disabled?: boolean; photosOnly?: boolean }) {
   const { lang, toast } = useApp();
   const ru = lang === "ru";
   const input = useRef<HTMLInputElement>(null);
@@ -16,10 +17,12 @@ export default function AttachButton({ token, onFile, disabled }: { token: strin
     catch (e) { toast(fileErr(e, ru), "err"); }
     finally { setBusy(false); }
   };
-  const label = ru ? "Прикрепить фото или PDF (до 5 МБ)" : "Attach a photo or PDF (up to 5 MB)";
+  const label = photosOnly
+    ? (ru ? "Прикрепить фото (до 2 МБ)" : "Attach a photo (up to 2 MB)")
+    : (ru ? "Прикрепить фото или PDF (до 5 МБ)" : "Attach a photo or PDF (up to 5 MB)");
   return (
     <>
-      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+      <input ref={input} type="file" accept={photosOnly ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf"} className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; void pick(f); }} />
       <button type="button" className="btn btn-ghost shrink-0 !rounded-full" style={{ padding: 7, minHeight: 0, lineHeight: 0 }} disabled={disabled || busy}
         onClick={() => input.current?.click()} aria-label={label} title={label}>

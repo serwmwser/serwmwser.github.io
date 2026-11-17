@@ -55,7 +55,14 @@ function readRaw(req: http.IncomingMessage, max = MAX): Promise<Buffer> {
   });
 }
 
-/** Маршруты: POST /api/upload (картинка), POST /api/upload-voice (голос), GET /media/<имя>. Для загрузки нужен вход, тело = сам файл. viewer = кошелёк из токена или "" */
+const G_RE = /^[A-Za-z0-9_-]{8,64}$/;
+const GVMAX = 1024 * 1024; // голос гостя до 1 МБ (около 30 секунд)
+const GFMAX = 2 * 1024 * 1024; // фото гостя до 2 МБ
+const ipOf = (req: http.IncomingMessage) => String(req.headers["x-forwarded-for"] ?? "").split(",").pop()?.trim() || req.socket.remoteAddress || "?";
+
+/** Маршруты: POST /api/upload (картинка), POST /api/upload-voice (голос), POST /api/upload-file (фото или PDF), GET /media/<имя>.
+ *  Для загрузки нужен вход, тело = сам файл. viewer = кошелёк из токена или "".
+ *  Гости без регистрации: POST /api/guest/upload-voice и /api/guest/upload-file с заголовком x-guest (id гостя), жёсткие лимиты, только фото (без PDF). */
 export async function handleMedia(req: http.IncomingMessage, res: http.ServerResponse, url: URL, viewer: string): Promise<void> {
   const json = (code: number, o: unknown) => { res.writeHead(code, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }); res.end(JSON.stringify(o)); };
 
@@ -120,6 +127,25 @@ export async function handleMedia(req: http.IncomingMessage, res: http.ServerRes
     try { buf = await readRaw(req, FMAX); } catch { return json(413, { ok: false, error: "too_big" }); }
     const ext = fileKind(buf);
     if (!ext) return json(400, { ok: false, error: "bad_file" });
+    const name = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 20) + "." + ext;
+    const file = path.join(DIR, name);
+    if (!fs.existsSync(file)) { fs.writeFileSync(file + ".tmp", buf); fs.renameSync(file + ".tmp", file); }
+    return json(200, { ok: true, path: "/media/" + name });
+  }
+
+  if (req.method === "POST" && (url.pathname === "/api/guest/upload-voice" || url.pathname === "/api/guest/upload-file")) {
+    const g = String(req.headers["x-guest"] ?? "");
+    if (!G_RE.test(g)) return json(400, { ok: false, error: "guest" });
+    const voice = url.pathname.endsWith("voice");
+    const ip = ipOf(req);
+    const slow = voice
+      ? limited("gvo:" + g, 3, 3600000) || limited("gvod:" + g, 5, 86400000) || limited("gvoip:" + ip, 20, 86400000)
+      : limited("gfl:" + g, 3, 3600000) || limited("gfld:" + g, 3, 86400000) || limited("gflip:" + ip, 10, 86400000);
+    if (slow) return json(429, { ok: false, error: "slow_down" });
+    let buf: Buffer;
+    try { buf = await readRaw(req, voice ? GVMAX : GFMAX); } catch { return json(413, { ok: false, error: "too_big" }); }
+    const ext = voice ? voiceKind(buf) : kind(buf);
+    if (!ext) return json(400, { ok: false, error: voice ? "bad_audio" : "bad_file" });
     const name = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 20) + "." + ext;
     const file = path.join(DIR, name);
     if (!fs.existsSync(file)) { fs.writeFileSync(file + ".tmp", buf); fs.renameSync(file + ".tmp", file); }

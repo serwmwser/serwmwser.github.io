@@ -4,16 +4,32 @@ import { useApp } from "@/lib/ctx";
 import { targetLang } from "@/lib/translate";
 import { guestLeft, inviteTarget, loadGuest, MAX_QUEUE, saveGuest, type GuestQueued, type GuestSession, type InviteInfo } from "@/lib/invite-link";
 import { guestDelete, guestError, guestReport, guestSend, guestThread, guestTranslate, isOffline, type GuestItem, type Tr } from "@/lib/guest-api";
+import { GUEST_VOICE_MAX_SEC, guestToken, parseVoice } from "@/lib/voice";
+import { parseFile } from "@/lib/attach";
 import TrustScreen from "./TrustScreen";
+import VoiceBubble from "./VoiceBubble";
+import VoiceRecorder from "./VoiceRecorder";
+import FileBubble from "./FileBubble";
+import AttachButton from "./AttachButton";
 
 const NAME_KEY = "hm_guest_name";
 const POLL_MS = 8000; // опрос ответов пригласившего; сервер допускает не чаще раза в 6 секунд
 const newKey = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const bubbleMe = { background: "linear-gradient(135deg,#ff8fb1,#8b4dff)" } as const;
 const bubbleThem = { background: "rgba(139,77,255,.12)" } as const;
+const isMedia = (t: string) => !!(parseVoice(t) || parseFile(t));
+/** Голосовое или фото внутри пузыря; обычный текст возвращается как есть */
+const mediaOr = (text: string, ru: boolean, fallback: React.ReactNode) => {
+  const v = parseVoice(text);
+  if (v) return <VoiceBubble path={v.path} sec={v.sec} />;
+  const f = parseFile(text);
+  if (f) return <FileBubble f={f} ru={ru} />;
+  return fallback;
+};
 
 /** HiMeet invite: гостевой диалог с пригласившим. Без установки и регистрации.
- *  Как в чате профиля: перевод по кнопке, удаление своих сообщений, жалоба, статусы «доставлено / прочитано».
+ *  Как в чате профиля: перевод по кнопке, удаление своих сообщений, жалоба, статусы «доставлено / прочитано»,
+ *  голосовые (до 30 секунд) и фото (до 2 МБ) с жёсткими дневными лимитами.
  *  Работает и без интернета: сообщения ждут в очереди и уходят сами, переписка читается из кэша браузера.
  *  Звонки и сохранение переписки требуют входа. */
 export default function GuestChat({ info }: { info: InviteInfo }) {
@@ -87,7 +103,7 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
   useEffect(() => { // ответы пригласившего переводятся сами
     if (!sid) return;
     for (const m of items) {
-      if (m.side !== "inviter" || asked.current.has(m.id)) continue;
+      if (m.side !== "inviter" || asked.current.has(m.id) || isMedia(m.text)) continue;
       asked.current.add(m.id);
       tryTr(m.id, m.text);
     }
@@ -138,24 +154,31 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [items.length, queue.length, local.length]);
 
-  const send = (e: FormEvent) => {
-    e.preventDefault();
-    const text = draft.trim();
+  /** Кладёт сообщение в очередь и отправляет; сообщения без сети ждут и уходят сами */
+  const enqueue = (text: string) => {
     const sess = sRef.current;
     if (!sess || !text || left <= 0 || blocked) return;
     setErr(""); setNote("");
     if (!target) { // в ссылке нет пригласившего: сообщение хранится только в этом браузере
       const msgs = [...sess.msgs, { from: "me" as const, text, ts: Date.now() }];
       persist({ msgs, sent: sess.sent + 1 });
-      setLocal(msgs); setLeft(guestLeft(sRef.current as GuestSession)); setDraft("");
+      setLocal(msgs); setLeft(guestLeft(sRef.current as GuestSession));
       return;
     }
     if (sess.queue.length >= MAX_QUEUE) { setErr(guestError("offline", ru)); return; }
     const next = [...sess.queue, { k: newKey(), text, ts: Date.now() }];
-    persist({ queue: next }); setQueue(next); setDraft("");
+    persist({ queue: next }); setQueue(next);
     try { localStorage.setItem(NAME_KEY, nameRef.current.trim()); } catch { /* без хранилища */ }
     flush();
   };
+  const send = (e: FormEvent) => {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    setDraft("");
+    enqueue(text);
+  };
+  const sendMedia = async (marker: string) => { enqueue(marker); };
 
   const delMine = async (m: GuestItem) => {
     const sess = sRef.current;
@@ -181,8 +204,9 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
   /** Входящее сообщение: перевод на язык гостя, «Показать оригинал», при сбое «Перевести» */
   const incoming = (id: number, text: string, auto: boolean, m?: GuestItem) => {
     const t = trMap[id];
-    const tx = t && t !== "load" && t !== "fail" && !t.same ? t : null;
-    const pending = t === "load" || (t === undefined && auto);
+    const media = isMedia(text);
+    const tx = !media && t && t !== "load" && t !== "fail" && !t.same ? t : null;
+    const pending = !media && (t === "load" || (t === undefined && auto));
     return (
       <div className="flex"><div className="max-w-[88%] rounded-2xl rounded-es-sm px-3 py-2 text-sm" style={bubbleThem}>
         {pending ? (
@@ -192,10 +216,10 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
             <i className="w-1.5 h-1.5 rounded-full bg-current opacity-60 animate-pulse" style={{ animationDelay: ".4s" }} />
           </span>
         ) : (
-          <span>{tx && !origMap[id] ? tx.text : text}</span>
+          mediaOr(text, ru, <span>{tx && !origMap[id] ? tx.text : text}</span>)
         )}
         {tx && <button type="button" className={toggleBtn} onClick={() => setOrigMap((v) => ({ ...v, [id]: !v[id] }))}>{origMap[id] ? (ru ? "Показать перевод" : "Show translation") : (ru ? "Показать оригинал" : "Show original")}</button>}
-        {t === "fail" && <button type="button" className={toggleBtn} onClick={() => tryTr(id, text)}>{ru ? "Перевести" : "Translate"}</button>}
+        {!media && t === "fail" && <button type="button" className={toggleBtn} onClick={() => tryTr(id, text)}>{ru ? "Перевести" : "Translate"}</button>}
         {m && <button type="button" className="ms-2 text-xs opacity-50 hover:opacity-100" onClick={() => report(m)} aria-label={ru ? "Пожаловаться" : "Report"}>⚑</button>}
       </div></div>
     );
@@ -220,7 +244,7 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
           ? <>
               {items.map((m) => m.side === "guest" ? (
                 <div key={m.id} className="flex justify-end"><div className="max-w-[88%] rounded-2xl rounded-ee-sm px-3 py-2 text-sm text-white" style={bubbleMe}>
-                  {m.text}
+                  {mediaOr(m.text, ru, m.text)}
                   <span className="block text-[10px] opacity-70 text-end mt-0.5">
                     <span aria-label={m.read ? (ru ? "Прочитано" : "Read") : (ru ? "Доставлено" : "Delivered")}>{m.read ? "✓✓" : "✓"}</span>
                     <button type="button" className="ms-2 opacity-70 hover:opacity-100" onClick={() => delMine(m)} aria-label={ru ? "Удалить" : "Delete"}>🗑</button>
@@ -229,7 +253,7 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
               ) : <div key={m.id}>{incoming(m.id, m.text, true, m)}</div>)}
               {queue.map((q) => (
                 <div key={q.k} className="flex justify-end"><div className="max-w-[88%] rounded-2xl rounded-ee-sm px-3 py-2 text-sm text-white opacity-80" style={bubbleMe}>
-                  {q.text}
+                  {mediaOr(q.text, ru, q.text)}
                   <span className="block text-[10px] opacity-80 text-end mt-0.5">
                     🕓 {ru ? "ждёт сети" : "waiting for network"}
                     <button type="button" className="ms-2 opacity-70 hover:opacity-100" onClick={() => delQueued(q.k)} aria-label={ru ? "Убрать" : "Remove"}>🗑</button>
@@ -238,7 +262,7 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
               ))}
             </>
           : local.map((m) => (
-              <div key={m.ts} className="flex justify-end"><div className="max-w-[88%] rounded-2xl rounded-ee-sm px-3 py-2 text-sm text-white" style={bubbleMe}>{m.text}</div></div>
+              <div key={m.ts} className="flex justify-end"><div className="max-w-[88%] rounded-2xl rounded-ee-sm px-3 py-2 text-sm text-white" style={bubbleMe}>{mediaOr(m.text, ru, m.text)}</div></div>
             ))}
         <div ref={endRef} />
       </div>
@@ -252,7 +276,13 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
         {target && items.length === 0 && queue.length === 0 && (
           <input className="input w-full" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} placeholder={ru ? "Как вас зовут? (необязательно)" : "Your name (optional)"} aria-label={ru ? "Ваше имя" : "Your name"} />
         )}
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {target && sid && (
+            <>
+              <AttachButton token={guestToken(sid)} photosOnly disabled={!canWrite} onFile={sendMedia} />
+              <VoiceRecorder token={guestToken(sid)} maxSec={GUEST_VOICE_MAX_SEC} disabled={!canWrite} onVoice={sendMedia} />
+            </>
+          )}
           <input
             className="input flex-1 min-w-0"
             value={draft}

@@ -2,13 +2,21 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/ctx";
 import { targetLang, translateError, translateText } from "@/lib/translate";
+import { parseVoice } from "@/lib/voice";
+import { parseFile } from "@/lib/attach";
+import VoiceBubble from "./VoiceBubble";
+import VoiceRecorder from "./VoiceRecorder";
+import FileBubble from "./FileBubble";
+import AttachButton from "./AttachButton";
 import { guestBlock, guestError, guestFlag, guestInbox, guestMessages, guestRemove, guestReply, type GuestItem, type GuestThreadInfo } from "@/lib/guest-api";
 
 const REFRESH_MS = 10000;
 type Tr = { text: string; show: boolean };
+const isMedia = (t: string) => !!(parseVoice(t) || parseFile(t));
 
 /** HiMeet invite: блок «Гости по вашей ссылке» во вкладке «Чат». Видны переписки людей, написавших по вашей ссылке-приглашению
  *  без регистрации; можно перевести их сообщения, ответить, удалить свой ответ, пожаловаться и заблокировать гостя.
+ *  Голосовые и фото гостя показываются в переписке, отвечать можно текстом, голосом и фото.
  *  Пока гостей нет, блок скрыт. */
 export default function GuestInbox({ token }: { token: string }) {
   const { lang, toast } = useApp();
@@ -57,18 +65,23 @@ export default function GuestInbox({ token }: { token: string }) {
     }
   };
 
-  const reply = async (e: FormEvent) => {
-    e.preventDefault();
-    const text = draft.trim();
-    if (!open || !text || busy || blocked) return;
-    setBusy(true);
+  const sendText = async (text: string): Promise<boolean> => {
+    if (!open || !text || blocked) return false;
     try {
       const r = await guestReply(token, open, text);
       setMsgs((v) => [...v, { id: r.id, side: "inviter", text, created: Date.now() }]);
-      setDraft("");
-    } catch (x) { toast(guestError((x as Error).message, ru), "err"); }
+      return true;
+    } catch (x) { toast(guestError((x as Error).message, ru), "err"); return false; }
+  };
+  const reply = async (e: FormEvent) => {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    try { if (await sendText(text)) setDraft(""); }
     finally { setBusy(false); }
   };
+  const sendMedia = async (marker: string) => { await sendText(marker); };
 
   const remove = async (m: GuestItem) => {
     if (!window.confirm(ru ? "Удалить ваше сообщение?" : "Delete your message?")) return;
@@ -110,14 +123,20 @@ export default function GuestInbox({ token }: { token: string }) {
             return (
               <div key={m.id} className={mine ? "flex justify-end" : "flex"}>
                 <div className={"max-w-[88%] rounded-2xl px-3 py-2 text-sm " + (mine ? "text-white" : "")} style={{ background: mine ? "linear-gradient(135deg,#ff8fb1,#8b4dff)" : "rgba(139,77,255,.12)" }}>
-                  <span>{!mine && t && t !== "load" && t.show ? t.text : m.text}</span>
+                  {(() => {
+                    const v = parseVoice(m.text);
+                    if (v) return <VoiceBubble path={v.path} sec={v.sec} />;
+                    const f = parseFile(m.text);
+                    if (f) return <FileBubble f={f} ru={ru} />;
+                    return <span>{!mine && t && t !== "load" && t.show ? t.text : m.text}</span>;
+                  })()}
                   <span className="block text-[10px] opacity-60 mt-0.5">
                     {time(m.created)}
                     {mine && <span className="ms-1" aria-label={m.read ? (ru ? "Прочитано" : "Read") : (ru ? "Доставлено" : "Delivered")}>{m.read ? "✓✓" : "✓"}</span>}
                     {mine && <button type="button" className="ms-2 opacity-80 hover:opacity-100" onClick={() => remove(m)} aria-label={ru ? "Удалить" : "Delete"}>🗑</button>}
                     {!mine && <button type="button" className="ms-2 opacity-70 hover:opacity-100" onClick={() => flag(m)} aria-label={ru ? "Пожаловаться" : "Report"}>⚑</button>}
                   </span>
-                  {!mine && (
+                  {!mine && !isMedia(m.text) && (
                     <button type="button" className="block mt-0.5 text-xs underline opacity-75" onClick={() => doTr(m)}>
                       {t === "load" ? "…" : t && t.show ? (ru ? "Показать оригинал" : "Show original") : (ru ? "Перевести" : "Translate")}
                     </button>
@@ -129,7 +148,9 @@ export default function GuestInbox({ token }: { token: string }) {
           <div ref={endRef} />
         </div>
         {blocked && <p className="text-xs opacity-80" role="status">{ru ? "Гость заблокирован: он не может писать, а вы не можете отвечать." : "Guest is blocked: they can't write and you can't reply."}</p>}
-        <form onSubmit={reply} className="flex gap-2">
+        <form onSubmit={reply} className="flex gap-2 items-center">
+          <AttachButton token={token} disabled={blocked} onFile={sendMedia} />
+          <VoiceRecorder token={token} disabled={blocked} onVoice={sendMedia} />
           <input className="input flex-1 min-w-0" value={draft} maxLength={500} disabled={blocked} onChange={(e) => setDraft(e.target.value)} placeholder={ru ? "Ответить гостю…" : "Reply to the guest…"} aria-label={ru ? "Ответ" : "Reply"} />
           <button className="btn btn-primary shrink-0" type="submit" disabled={!draft.trim() || busy || blocked}>{ru ? "Отправить" : "Send"}</button>
         </form>
@@ -150,7 +171,7 @@ export default function GuestInbox({ token }: { token: string }) {
             <button type="button" onClick={() => { setOpen(x.g); setName(x.name); setBlocked(!!x.blocked); setMsgs([]); }} className="w-full text-start rounded-xl px-3 py-2 flex items-center gap-2 hover:opacity-90" style={{ background: "rgba(139,77,255,.10)" }}>
               <span className="min-w-0 flex-1">
                 <b className="block truncate">{label(x.g, x.name)}{x.blocked ? (ru ? " · заблокирован" : " · blocked") : ""}</b>
-                <span className="block text-xs opacity-75 truncate">{x.mine ? (ru ? "Вы: " : "You: ") : ""}{x.last}</span>
+                <span className="block text-xs opacity-75 truncate">{x.mine ? (ru ? "Вы: " : "You: ") : ""}{parseVoice(x.last) ? (ru ? "🎤 Голосовое сообщение" : "🎤 Voice message") : parseFile(x.last) ? (ru ? "📎 Вложение" : "📎 Attachment") : x.last}</span>
               </span>
               {x.unread > 0 && <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: "#ff4fa3" }}>{x.unread}</span>}
             </button>

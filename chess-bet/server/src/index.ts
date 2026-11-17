@@ -563,6 +563,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname.startsWith("/api/calls/")) { handleCalls(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/tch/")) { handleTch(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/ads/")) { handleAds(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
+  if (url.pathname === "/api/guest/upload-voice" || url.pathname === "/api/guest/upload-file") { handleMedia(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/guest/")) { handleGuest(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/translate") { handleTranslate(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/puzzles/")) { handlePuzzles(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }

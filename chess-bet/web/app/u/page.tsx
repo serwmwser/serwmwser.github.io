@@ -18,6 +18,7 @@ import { useUnread } from "@/lib/dm";
 import { useMailUnread } from "@/lib/mail";
 import ShareMenu from "@/components/ShareMenu";
 import InviteFriend from "@/components/InviteFriend";
+import GuestInbox from "@/components/GuestInbox";
 import PushToggle from "@/components/PushToggle";
 import PostComposer, { uploadImage } from "@/components/PostComposer";
 import { useApp } from "@/lib/ctx";
@@ -247,7 +248,7 @@ function Profile() {
       ) : tab === "mail" && u.me ? (
         <MailPanel token={s.token} myName={s.me?.name} initialTo={sp.get("to") || ""} />
       ) : tab === "chat" ? (
-        <ChatPanel token={s.token} addr={s.addr} busy={s.busy} signIn={s.signIn} peer={u.me ? undefined : u.name} initial={u.me ? sp.get("with") || "" : ""} />
+        <>{u.me && <GuestInbox token={s.token} />}<ChatPanel token={s.token} addr={s.addr} busy={s.busy} signIn={s.signIn} peer={u.me ? undefined : u.name} initial={u.me ? sp.get("with") || "" : ""} /></>
       ) : (
       <div className="space-y-3">
         {shown.map((p) => (

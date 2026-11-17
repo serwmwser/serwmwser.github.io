@@ -137,3 +137,24 @@ export async function handleTranslate(req: http.IncomingMessage, res: http.Serve
     return bad("server", 500);
   }
 }
+
+/** Перевод для гостя (без входа): общий кэш с обычным переводом; лимит на гостя 20 в час и 60 в сутки.
+ *  Ключ лимита (id гостя или IP) задаёт вызывающий код. */
+export async function translateForGuest(
+  textIn: string, toIn: string, limitKey: string,
+): Promise<{ ok: true; text: string; from: string; same?: boolean } | { ok: false; error: string; code: number }> {
+  const text = String(textIn ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, MAX_TEXT);
+  const to = String(toIn ?? "").toLowerCase().slice(0, 2);
+  if (!text) return { ok: false, error: "empty", code: 400 };
+  if (!LANGS.has(to)) return { ok: false, error: "lang", code: 400 };
+  const h = crypto.createHash("sha256").update(to + "\n" + text).digest("hex").slice(0, 40);
+  const hit = db.prepare("SELECT src, text FROM translations WHERE h=?").get(h) as { src: string; text: string } | undefined;
+  if (hit) return { ok: true, text: hit.text, from: hit.src };
+  if (limited("trg_h:" + limitKey, 20, HOUR) || limited("trg_d:" + limitKey, 60, DAY)) return { ok: false, error: "slow_down", code: 429 };
+  let r: R;
+  try { r = await translate(text, to); }
+  catch (e) { console.error("translate(guest)", (e as Error).message); return { ok: false, error: "unavailable", code: 503 }; }
+  if (r.from && r.from === to) return { ok: true, text, from: r.from, same: true };
+  db.prepare("INSERT OR REPLACE INTO translations(h,lang,src,text,created) VALUES(?,?,?,?,?)").run(h, to, r.from, r.text, Date.now());
+  return { ok: true, text: r.text, from: r.from };
+}

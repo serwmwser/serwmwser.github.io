@@ -31,8 +31,9 @@ const mediaOr = (text: string, ru: boolean, fallback: React.ReactNode) => {
  *  Как в чате профиля: перевод по кнопке, удаление своих сообщений, жалоба, статусы «доставлено / прочитано»,
  *  голосовые (до 30 секунд) и фото (до 2 МБ) с жёсткими дневными лимитами.
  *  Работает и без интернета: сообщения ждут в очереди и уходят сами, переписка читается из кэша браузера.
- *  Звонки и сохранение переписки требуют входа. */
-export default function GuestChat({ info }: { info: InviteInfo }) {
+ *  Звонки и сохранение переписки требуют входа.
+ *  onActivity сообщает странице-воронке, сколько сообщений написал гость (total) и только что ли он отправил новое (fresh). */
+export default function GuestChat({ info, onActivity }: { info: InviteInfo; onActivity?: (total: number, fresh: boolean) => void }) {
   const { lang } = useApp();
   const ru = lang === "ru";
   const target = inviteTarget(info); // ник из короткой ссылки или адрес из старой
@@ -60,6 +61,9 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
   const asked = useRef<Set<number>>(new Set());
   const flushing = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const freshRef = useRef(false); // гость только что отправил сообщение
+  const actRef = useRef(onActivity);
+  useEffect(() => { actRef.current = onActivity; }, [onActivity]);
 
   const persist = useCallback((patch: Partial<GuestSession>) => {
     const cur = sRef.current;
@@ -152,6 +156,9 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
     return () => { clearInterval(t); window.removeEventListener("online", on); };
   }, [sid, target, flush, poll]);
 
+  const total = items.filter((m) => m.side === "guest").length + queue.length + local.length;
+  useEffect(() => { actRef.current?.(total, freshRef.current); freshRef.current = false; }, [total]);
+
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [items.length, queue.length, local.length]);
 
   /** Кладёт сообщение в очередь и отправляет; сообщения без сети ждут и уходят сами */
@@ -159,6 +166,7 @@ export default function GuestChat({ info }: { info: InviteInfo }) {
     const sess = sRef.current;
     if (!sess || !text || left <= 0 || blocked) return;
     setErr(""); setNote("");
+    freshRef.current = true;
     if (!target) { // в ссылке нет пригласившего: сообщение хранится только в этом браузере
       const msgs = [...sess.msgs, { from: "me" as const, text, ts: Date.now() }];
       persist({ msgs, sent: sess.sent + 1 });

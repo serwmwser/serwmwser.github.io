@@ -549,7 +549,7 @@ const server = http.createServer((req, res) => {
   if (origin && originOk(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Wallet");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Wallet, X-Guest");
   }
   if (req.method === "OPTIONS") { res.writeHead(204).end(); return; }
   res.setHeader("Content-Type", "application/json");

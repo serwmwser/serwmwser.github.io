@@ -50,6 +50,11 @@ export const guestDelete = (g: string, id: number) => call<{ removed: boolean }>
 /** Пожаловаться на сообщение пригласившего */
 export const guestReport = (g: string, id: number, reason = "") => call<Record<string, never>>("/api/guest/report", { post: { g, id, reason } });
 
+// ---- после регистрации ----
+/** Перенести гостевую переписку в личные сообщения профиля (нужен токен входа нового пользователя) */
+export const guestClaim = (token: string, g: string, ref: string) =>
+  call<{ moved: number; name: string; blocked?: boolean }>("/api/guest/claim", { token, post: { g, ref } });
+
 // ---- пригласивший (нужен токен входа) ----
 export const guestUnread = (token: string) => call<{ n: number }>("/api/guest/unread", { token }).then((r) => r.n);
 export const guestInbox = (token: string) => call<{ items: GuestThreadInfo[] }>("/api/guest/inbox", { token }).then((r) => r.items);
@@ -71,6 +76,8 @@ export function guestError(code: string, ru: boolean): string {
     auth: ["Нужно войти", "Please sign in"],
     no_thread: ["Переписка не найдена", "Conversation not found"],
     no_message: ["Сообщение не найдено", "Message not found"],
+    self: ["Это ваша собственная ссылка", "This is your own link"],
+    guest: ["Гостевая переписка не найдена", "Guest conversation not found"],
     offline: ["Нет сети. Повторите, когда интернет вернётся.", "You are offline. Try again when the connection returns."],
   };
   const x = m[code];

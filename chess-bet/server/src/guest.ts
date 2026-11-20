@@ -1,6 +1,7 @@
 // Гостевой чат по ссылке приглашения: человек без входа пишет пригласившему, тот отвечает из профиля.
 // Гость идентифицируется случайным id из своего браузера (g). Ограничения: текст до 500 символов, 20 сообщений гостя в сутки.
 // Пригласивший в ссылке задаётся ником (/i/?u=ник) или адресом кошелька (старые ссылки ?ref=0x…).
+// После регистрации гостя его переписка переносится в личные сообщения (POST /api/guest/claim).
 import fs from "node:fs";
 import path from "node:path";
 import type http from "node:http";
@@ -249,6 +250,30 @@ export async function handleGuest(req: http.IncomingMessage, res: http.ServerRes
       const r = db.prepare("UPDATE guest_threads SET blocked=? WHERE g=? AND inviter=?").run(on, g, viewer);
       if (!r.changes) return bad("no_thread", 404);
       return out(200, { ok: true, blocked: !!on });
+    }
+    if (req.method === "POST" && p === "/api/guest/claim") { // после регистрации: гостевая переписка переезжает в личные сообщения профиля
+      const m = await readBody(req);
+      const g = String(m.g ?? "");
+      if (!G_RE.test(g)) return bad("guest");
+      const inv = resolveInviter(m.ref);
+      if (!inv) return bad("no_inviter", 404);
+      if (inv.addr === viewer) return bad("self");
+      if (limited("gc:" + viewer, 10, DAY)) return bad("slow_down", 429);
+      const th = db.prepare("SELECT blocked FROM guest_threads WHERE g=? AND inviter=?").get(g, inv.addr) as { blocked: number } | undefined;
+      if (!th) return out(200, { ok: true, moved: 0, name: inv.name });
+      if (th.blocked) return out(200, { ok: true, moved: 0, name: inv.name, blocked: true }); // заблокированного гостя не переносим
+      const rows = db.prepare("SELECT side,text,created,seen FROM guest_msgs WHERE g=? AND inviter=? ORDER BY id LIMIT 300").all(g, inv.addr) as { side: string; text: string; created: number; seen: number }[];
+      const ins = db.prepare("INSERT INTO dm(a,b,text,created,seen,deleted) VALUES(?,?,?,?,?,0)");
+      const move = db.transaction(() => {
+        for (const r of rows) {
+          if (r.side === "g") ins.run(viewer, inv.addr, r.text, r.created, r.seen ? 1 : 0); // сообщение гостя: от нового профиля пригласившему
+          else ins.run(inv.addr, viewer, r.text, r.created, 1); // ответ пригласившего: гость его уже прочитал
+        }
+        db.prepare("DELETE FROM guest_msgs WHERE g=? AND inviter=?").run(g, inv.addr);
+        db.prepare("DELETE FROM guest_threads WHERE g=? AND inviter=?").run(g, inv.addr);
+      });
+      move();
+      return out(200, { ok: true, moved: rows.length, name: inv.name });
     }
     return bad("not_found", 404);
   } catch (e) {

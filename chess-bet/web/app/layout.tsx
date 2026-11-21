@@ -71,7 +71,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `if("serviceWorker"in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("${BASE}/sw.js",{scope:"${BASE}/"}).catch(function(){})})}`,
           }}
         />
-      </body>
+        <a href="https://www.launchpact.io/startups?utm_source=badge&utm_medium=embed&utm_campaign=directory-badge" target="_blank" rel="noopener noreferrer">
+    <img src="https://www.launchpact.io/badge-listed.png" alt="Listed on LaunchPact" width="180" height="60" />
+  </a>
+  </body>
     </html>
   );
 }

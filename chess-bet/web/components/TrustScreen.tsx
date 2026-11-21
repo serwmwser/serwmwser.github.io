@@ -57,7 +57,7 @@ export default function TrustScreen({ name, reason = "save", onClose }: { name: 
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3" style={{ background: "rgba(60,20,80,.45)" }} role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
+    <div data-pt className="fixed inset-0 z-[1000] flex items-center justify-center p-3" style={{ background: "rgba(60,20,80,.45)" }} role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
       <div className="card w-full max-w-md flex flex-col overflow-hidden !p-0" style={{ maxHeight: "calc(100dvh - 24px)" }} onClick={(e) => e.stopPropagation()}>
         <div className="overflow-y-auto p-4 space-y-3">
           <div className="text-center space-y-1">

@@ -245,7 +245,7 @@ export default function GuestChat({ info, onActivity }: { info: InviteInfo; onAc
         <button type="button" className="btn btn-ghost !px-3 !py-1.5 shrink-0" onClick={() => setTrust("call")} aria-label={ru ? `Позвонить: ${who}` : `Call ${who}`}>📞 {ru ? "Позвонить" : "Call"}</button>
       </div>
 
-      <div className="space-y-2" aria-live="polite">
+      <div className="space-y-2" aria-live="polite" data-notr translate="no">
         {incoming(0, first, !own)}
 
         {target

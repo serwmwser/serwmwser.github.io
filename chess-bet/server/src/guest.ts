@@ -7,6 +7,7 @@ import path from "node:path";
 import type http from "node:http";
 import Database from "better-sqlite3";
 import { translateForGuest } from "./translate.js";
+import { recordRef } from "./refs.js";
 
 const DB_FILE = process.env.SOCIAL_DB || "./data/social.db";
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
@@ -262,6 +263,7 @@ export async function handleGuest(req: http.IncomingMessage, res: http.ServerRes
       const th = db.prepare("SELECT blocked FROM guest_threads WHERE g=? AND inviter=?").get(g, inv.addr) as { blocked: number } | undefined;
       if (!th) return out(200, { ok: true, moved: 0, name: inv.name });
       if (th.blocked) return out(200, { ok: true, moved: 0, name: inv.name, blocked: true }); // заблокированного гостя не переносим
+      recordRef(viewer, inv.addr, "guest"); // пришёл по ссылке-приглашению в чат: пригласивший получает реферальные награды
       const rows = db.prepare("SELECT side,text,created,seen FROM guest_msgs WHERE g=? AND inviter=? ORDER BY id LIMIT 300").all(g, inv.addr) as { side: string; text: string; created: number; seen: number }[];
       const ins = db.prepare("INSERT INTO dm(a,b,text,created,seen,deleted) VALUES(?,?,?,?,?,0)");
       const move = db.transaction(() => {

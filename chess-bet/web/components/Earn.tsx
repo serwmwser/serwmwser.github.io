@@ -7,6 +7,7 @@ import { useApp } from "@/lib/ctx";
 import { chain, client } from "@/lib/config";
 import { REF_ENABLED, TIERS, perGame, refLink, tierOf } from "@/lib/ref";
 import Share from "@/components/Share";
+import RefEarnings from "@/components/RefEarnings";
 import { wallets } from "@/components/Header";
 
 type D = {
@@ -132,6 +133,8 @@ export default function Earn() {
         <p className="opacity-80 text-sm">{x.lead}</p>
         {!REF_ENABLED && <p className="text-xs rounded-xl bg-amber-400/10 border border-amber-300/30 px-3 py-2">{x.soon}</p>}
       </div>
+
+      <RefEarnings />
 
       <div className="card space-y-3">
         <h2 className="font-bold">{x.linkT}</h2>

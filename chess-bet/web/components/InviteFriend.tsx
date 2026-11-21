@@ -55,6 +55,7 @@ export default function InviteFriend() {
         ))}
       </div>
       <p className="text-xs opacity-70">{cur.hint}</p>
+      <p className="text-xs opacity-80" data-id="reward-note">{ru ? "Ссылка реферальная: за активность друга вы получаете награды. Подробности во вкладке «Заработать»." : "The link is also a referral link: you earn rewards for your friend's activity. Details are in the Earn tab."}</p>
       <p className="text-xs font-mono opacity-80 break-all" aria-label={ru ? "Ссылка приглашения" : "Invitation link"}>{cur.url}</p>
       <ShareMenu url={cur.url} text={cur.text} label={ru ? "Пригласить друга" : "Invite a friend"} className="btn btn-primary w-full justify-center" />
     </section>

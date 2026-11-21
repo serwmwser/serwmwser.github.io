@@ -28,6 +28,7 @@ setCallHook((c) => { const r = tchOnCall(c); if (!r.ok && r.reason !== "short") 
 import { handleAds, setPayVerifier, setRefSource } from "./ads.js";
 import { handleTranslate } from "./translate.js";
 import { handleGuest, setGuestNotify } from "./guest.js";
+import { handleRefs, recordRef } from "./refs.js";
 
 const SITE_URL = process.env.SITE_URL || "https://himeet.online";
 
@@ -561,6 +562,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/api/tournaments" || url.pathname.startsWith("/api/tournaments/")) { handleTournaments(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/report" || url.pathname.startsWith("/api/mod/")) { handleMod(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/calls/")) { handleCalls(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
+  if (url.pathname.startsWith("/api/refs/")) { handleRefs(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/tch/")) { handleTch(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/ads/")) { handleAds(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/guest/upload-voice" || url.pathname === "/api/guest/upload-file") { handleMedia(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
@@ -642,10 +644,11 @@ const server = http.createServer((req, res) => {
         if (!ethers.isAddress(user) || !ethers.isAddress(ref) || user === ref) return out({ ok: false, error: "bad_address" });
         const msg = `ChessBet referral\nUser: ${user}\nReferrer: ${ref}`;
         if (!(m.token && checkSession(user, m.token)) && lc(ethers.verifyMessage(msg, String(m.sig ?? ""))) !== user) return out({ ok: false, error: "bad_sig" });
-        if (refPending.has(user)) return out({ ok: true });
+        if (refPending.has(user)) { recordRef(user, refPending.get(user) ?? ref, "link"); return out({ ok: true }); }
         if (done.some((d) => d.white === user || d.black === user) || [...live.values()].some((g) => g.white === user || g.black === user)) return out({ ok: false, error: "already_played" });
         if (String(await escrow.referrerOf(user)) !== ethers.ZeroAddress) return out({ ok: true });
         refPending.set(user, ref); saveRefs();
+        recordRef(user, ref, "link"); // награды за активность приглашённого (баллы TCH): чат, объявления, знакомства
         out({ ok: true });
       } catch { out({ ok: false, error: "bad_request" }); }
     });

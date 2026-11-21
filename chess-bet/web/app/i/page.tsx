@@ -1,9 +1,11 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/ctx";
+import { usePageTranslate } from "@/lib/pageTranslate";
+import { useActiveAccount } from "thirdweb/react";
 import { useSocial } from "@/lib/social";
-import { captureRef, getRef } from "@/lib/ref";
+import { captureRef, getRef, registerRef } from "@/lib/ref";
 import { ROUTES } from "@/lib/urls";
 import { inviteTarget, loadGuest, readInvite, type InviteInfo } from "@/lib/invite-link";
 import { guestClaim, guestInviter } from "@/lib/guest-api";
@@ -18,7 +20,10 @@ import FunnelSignup from "@/components/FunnelSignup";
 export default function InvitePage() {
   const { lang } = useApp();
   const { token } = useSocial();
+  const account = useActiveAccount();
   const ru = lang === "ru";
+  const mainRef = useRef<HTMLElement>(null);
+  const pt = usePageTranslate(mainRef, lang); // язык посетителя определяется автоматически, страница переводится
   const [info, setInfo] = useState<InviteInfo | null>(null);
   const [inviter, setInviter] = useState("");
   const [missing, setMissing] = useState(false);
@@ -47,6 +52,9 @@ export default function InvitePage() {
     window.addEventListener("offline", upd);
     return () => { window.removeEventListener("online", upd); window.removeEventListener("offline", upd); };
   }, []);
+
+  // после входа: привязываем нового пользователя к пригласившему (одна ссылка = чат и реферальная программа); повтор безопасен
+  useEffect(() => { if (account) void registerRef(account as never); }, [account, inviter]);
 
   // после входа: переносим гостевую переписку в личные сообщения (один раз для этой ссылки)
   useEffect(() => {
@@ -86,10 +94,17 @@ export default function InvitePage() {
   const current = done.findIndex((d) => !d);
 
   return (
-    <main className="mx-auto max-w-xl px-3 pt-3 pb-28 space-y-3">
+    <main ref={mainRef} className="mx-auto max-w-xl px-3 pt-3 pb-28 space-y-3">
       <header className="flex items-center justify-between">
         <Link href="/" className="text-lg font-extrabold" style={{ color: "#d4a017" }} aria-label="HiMeet">HiMeet</Link>
-        <span className="text-xs opacity-70">{ru ? "чат с автопереводом" : "chat with auto-translation"}</span>
+        <span className="flex items-center gap-2">
+          <span className="text-xs opacity-70">{ru ? "чат с автопереводом" : "chat with auto-translation"}</span>
+          {pt.target && (
+            <button type="button" data-notr translate="no" className="chip" onClick={pt.toggle} aria-pressed={pt.on} aria-label="Language">
+              🌐 {pt.on ? pt.name : "English"}{pt.busy ? " …" : ""}
+            </button>
+          )}
+        </span>
       </header>
 
       {!online && (

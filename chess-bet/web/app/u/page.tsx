@@ -23,7 +23,7 @@ import PushToggle from "@/components/PushToggle";
 import PostComposer, { uploadImage } from "@/components/PostComposer";
 import { useApp } from "@/lib/ctx";
 import { shortAddr } from "@/lib/config";
-import { absoluteUrl, profileUrl } from "@/lib/urls";
+import { absoluteUrl, profileUrl, ROUTES } from "@/lib/urls";
 import { errText, follow, getFeed, getPosts, getUser, INTERESTS, LANGS, saveProfile, useSocial, type SPost, type SUser } from "@/lib/social";
 
 type Tab = "posts" | "media" | "feed" | "chat" | "mail" | "tch" | "people";
@@ -239,6 +239,7 @@ function Profile() {
           <Fragment key={k}>{/* HiMeet tabs */}{i > 0 && tabs[i - 1][0] === "chat" && <span aria-hidden="true" className="basis-full h-0 sm:hidden" />}
           <button type="button" onClick={() => setTab(k)} aria-pressed={tab === k} className={tab === k ? "btn btn-primary !py-2" : "btn btn-ghost !py-2"}>{label}{k === "chat" && u.me && unread > 0 ? ` (${unread > 99 ? "99+" : unread})` : ""}{k === "mail" && mailUnread > 0 ? ` (${mailUnread > 99 ? "99+" : mailUnread})` : ""}</button></Fragment>
         ))}
+        <a href={ROUTES.exchange} className="btn btn-ghost !py-2">🌍 {ru ? "Языковой обмен" : "Language exchange"}</a>
       </nav>
 
       {tab === "people" && u.me ? (

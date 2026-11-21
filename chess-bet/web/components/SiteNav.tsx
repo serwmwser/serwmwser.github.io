@@ -11,6 +11,7 @@ type Item = { href: string; ru: string; en: string; icon: string; also?: string[
 const ITEMS: Item[] = [
   { href: ROUTES.ads, ru: "Объявления", en: "Classifieds", icon: "🛍" },
   { href: ROUTES.dating, ru: "Знакомства", en: "Dating", icon: "💞" },
+  { href: ROUTES.exchange, ru: "Языковой обмен", en: "Language exchange", icon: "🌍", also: [ROUTES.friends] },
   { href: ROUTES.messages, ru: "Общение", en: "Chat", icon: "💬", also: [ROUTES.feed, ROUTES.join] },
   { href: ROUTES.profile, ru: "Профиль", en: "Profile", icon: "👤" },
   { href: ROUTES.token, ru: "Заработать", en: "Earn", icon: "💰", also: [ROUTES.nft, ROUTES.roadmap, ROUTES.whitepaper] },

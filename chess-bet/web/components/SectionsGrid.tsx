@@ -12,6 +12,7 @@ const ITEMS: Item[] = [
   { href: ROUTES.nft, ru: "NFT", en: "NFT", icon: "🎨" },
   { href: ROUTES.tournaments, ru: "Турниры", en: "Tournaments", icon: "🏆" },
   { href: ROUTES.dating, ru: "Знакомства", en: "Dating", icon: "💞" },
+  { href: ROUTES.exchange, ru: "Языковой обмен", en: "Language exchange", icon: "🌍" },
   { href: ROUTES.puzzles, ru: "Задачи", en: "Puzzles", icon: "🧩" },
   { href: ROUTES.ads, ru: "Объявления", en: "Classifieds", icon: "🛍" },
   { href: ROUTES.feed, ru: "Лента", en: "Feed", icon: "📰" },

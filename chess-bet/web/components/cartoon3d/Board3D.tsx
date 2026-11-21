@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Chess, type Square } from "chess.js";
-import { cboardOf, readPrefs, useCartoonPrefs } from "@/lib/cartoonPrefs";
+import { cboardOf, readPrefs, useCartoonPrefs, type Cam } from "@/lib/cartoonPrefs";
 import { getAudio } from "@/lib/sfx";
 
 // 3D-доска с мультяшными фигурами. Настоящие шахматные правила (chess.js): ходы, взятия, рокировка, мат.
@@ -10,7 +10,7 @@ import { getAudio } from "@/lib/sfx";
 
 type Color = "w" | "b";
 type PType = "p" | "n" | "b" | "r" | "q" | "k";
-type View = "top" | "tilt" | "black";
+type View = "top" | "tilt" | "black" | "tiltb";
 type Status = { turn: Color; check: boolean; over: string; last: string };
 type Face = { eyes: THREE.Object3D[]; smile: THREE.Mesh | null; open: THREE.Mesh };
 type Piece = {
@@ -27,6 +27,7 @@ export type Board3DProps = {
   lastMove?: LastMove;
   disabled?: boolean;
   mute?: boolean; // без звука (просмотр истории партии)
+  cam?: Cam; // вид камеры в партии: сверху, под углом 30°, с другой стороны
   onMove?: (from: string, to: string, promotion?: string) => void;
 };
 
@@ -37,7 +38,7 @@ const TEAM: Record<Color, { robe: number; acc: number; hat: number; trim: number
 };
 const SKIN = 0xffd6b5;
 const GEMS = [0xff4d6d, 0x4dc3ff, 0x6be36b, 0xff9f1c, 0xb36bff];
-const BASE_VIEWS: Record<View, [number, number, number]> = { top: [0, 0.4, 21], tilt: [0.52, 0.95, 19], black: [Math.PI, 0.5, 21] };
+const BASE_VIEWS: Record<View, [number, number, number]> = { top: [0, 0.4, 21], tilt: [0.52, 0.95, 19], tiltb: [Math.PI + 0.52, 0.95, 19], black: [Math.PI, 0.5, 21] };
 
 const sqXZ = (sq: string) => ({ x: (sq.charCodeAt(0) - 97 - 3.5) * S, z: (8 - Number(sq[1]) - 3.5) * S });
 const toSq = (c: number, r: number) => (String.fromCharCode(97 + c) + (8 - r)) as Square;
@@ -201,6 +202,14 @@ function beep() {
 
 const VIEW_LABELS: [View, string][] = [["top", "Сверху"], ["tilt", "Под углом 30°"], ["black", "Со стороны чёрных"]];
 
+/** Камера в партии: «мой» вид зависит от того, за кого вы играете */
+function camView(cam: Cam | undefined, orientation: "white" | "black" | undefined): View {
+  const black = orientation === "black";
+  if (cam === "tilt") return black ? "tiltb" : "tilt";
+  if (cam === "far") return black ? "top" : "black";
+  return black ? "black" : "top";
+}
+
 export default function Board3D(props: Board3DProps = {}) {
   const propsRef = useRef<Board3DProps>(props);
   propsRef.current = props;
@@ -210,7 +219,7 @@ export default function Board3D(props: Board3DProps = {}) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctl = useRef<Ctl | null>(null);
-  const [view, setViewState] = useState<View>(props.orientation === "black" ? "black" : "top");
+  const [view, setViewState] = useState<View>(camView(props.cam, props.orientation));
   const [err, setErr] = useState(false);
   const [st, setSt] = useState<Status>({ turn: "w", check: false, over: "", last: "" });
 
@@ -372,7 +381,7 @@ export default function Board3D(props: Board3DProps = {}) {
     const tg = new THREE.Vector3(0, 0.2, 0);
     let az = 0, pol = 0.4, R = 21, aspect = 4 / 3;
     const goalFor = (v: View): [number, number, number] => { const b = BASE_VIEWS[v]; return [b[0], b[1], b[2] * Math.max(1, 1.33 / aspect)]; };
-    const view0: View = propsRef.current.orientation === "black" ? "black" : "top";
+    const view0: View = camView(propsRef.current.cam, propsRef.current.orientation);
     let goal = goalFor(view0);
     const resize = () => {
       const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return;
@@ -468,10 +477,10 @@ export default function Board3D(props: Board3DProps = {}) {
   /* смена стороны (играем чёрными) */
   useEffect(() => {
     if (props.fen === undefined) return;
-    const v: View = props.orientation === "black" ? "black" : "top";
+    const v = camView(props.cam, props.orientation);
     setViewState(v); ctl.current?.setView(v);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.orientation]);
+  }, [props.orientation, props.cam]);
 
   const choose = (v: View) => { setViewState(v); ctl.current?.setView(v); };
   const turnText = st.over || (st.turn === "w" ? "Ход белых" : "Ход чёрных") + (st.check ? ". Шах!" : "");
@@ -479,11 +488,11 @@ export default function Board3D(props: Board3DProps = {}) {
 
   return (
     <div className={controlled ? "w-full max-w-[560px] mx-auto" : "w-full"}>
-      <div className={"flex flex-wrap gap-2 " + (controlled ? "mb-2" : "mb-3")}>
+      {!controlled && <div className="mb-3 flex flex-wrap gap-2">
         {VIEW_LABELS.map(([v, label]) => <button key={v} type="button" className={btn(view === v)} aria-pressed={view === v} onClick={() => choose(v)}>{label}</button>)}
         {!controlled && <button type="button" className={btn(false)} onClick={() => ctl.current?.newGame()}>Новая партия</button>}
         {controlled && <button type="button" className={btn(false)} onClick={() => setPrefs({ view3d: false })}>Плоская доска</button>}
-      </div>
+      </div>}
       <div ref={boxRef} className={"relative aspect-square w-full overflow-hidden rounded-2xl border-2 border-white shadow-lg" + (controlled ? "" : " sm:aspect-[4/3]")} style={{ background: "linear-gradient(#7cc8ff,#cdeeff 60%,#fff6e0)" }}>
         <canvas ref={canvasRef} className="block h-full w-full" style={{ touchAction: "none", cursor: "grab" }} aria-label="Трёхмерная шахматная доска с мультяшными фигурами" />
         {err && <div className="absolute inset-0 flex items-center justify-center bg-white p-6 text-center text-slate-900">3D не запустилось на этом устройстве. Попробуйте другой браузер.</div>}

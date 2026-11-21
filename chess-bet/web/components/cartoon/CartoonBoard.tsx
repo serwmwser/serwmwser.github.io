@@ -2,7 +2,8 @@
 import { ComponentProps, ReactElement, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Board from "../Board";
-import { cboardOf, useCartoonPrefs } from "@/lib/cartoonPrefs";
+import { cboardOf, useCartoonPrefs, type Cam } from "@/lib/cartoonPrefs";
+import { useApp } from "@/lib/ctx";
 import Piece, { PieceType } from "./Pieces";
 import Knight from "./Knights";
 import { CARTOON_CSS, type Mood } from "./Character";
@@ -43,18 +44,40 @@ function build(pawnW: number, pawnB: number, moods: Record<string, Mood>, hop: H
 /** Доска с мультяшными фигурами: вся логика (ходы, подсветка, превращение, звук) та же, что у обычной доски.
  *  Если в настройках включён 3D-вид, вместо плоской доски показывается трёхмерная с теми же позицией и ходами. */
 export default function CartoonBoard({ pawnW = 1, pawnB = 0, moods, hop = null, ...rest }: Omit<BoardProps, "pieces"> & { pawnW?: number; pawnB?: number; moods?: Record<string, Mood>; hop?: Hop }) {
-  const [prefs] = useCartoonPrefs();
+  const [prefs, setPrefs] = useCartoonPrefs();
+  const { lang } = useApp();
+  const ru = lang === "ru";
   const cb = cboardOf(prefs.cboard);
   const key = JSON.stringify(moods ?? {}) + "|" + (hop ? hop.square + hop.mood : "");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const knights = prefs.team === "knights";
   const pieces = useMemo(() => build(pawnW, pawnB, moods ?? {}, hop, knights), [pawnW, pawnB, key, knights]);
+  /* переключатель видов: всегда над доской, чтобы вид можно было сменить прямо в партии */
+  const modes: { k: string; label: string; on: boolean; pick: () => void }[] = [
+    { k: "flat", label: ru ? "Плоская" : "Flat", on: !prefs.view3d, pick: () => setPrefs({ view3d: false }) },
+    ...([["top", ru ? "3D сверху" : "3D top"], ["tilt", ru ? "3D под углом 30°" : "3D 30° angle"], ["far", ru ? "3D с другой стороны" : "3D other side"]] as [Cam, string][]).map(([c, label]) => ({
+      k: c, label, on: prefs.view3d && prefs.cam === c, pick: () => setPrefs({ view3d: true, cam: c }),
+    })),
+  ];
+  const switcher = (
+    <div className="mx-auto mb-2 flex w-full max-w-[560px] flex-wrap justify-center gap-1.5" role="group" aria-label={ru ? "Вид доски" : "Board view"}>
+      {modes.map((m) => (
+        <button key={m.k} type="button" aria-pressed={m.on} className={"chip " + (m.on ? "chip-on" : "")} onClick={m.pick}>{m.label}</button>
+      ))}
+    </div>
+  );
   if (prefs.view3d) {
-    return <Board3D fen={rest.fen} orientation={rest.orientation} lastMove={rest.lastMove ?? null} disabled={rest.disabled} mute={rest.mute} onMove={rest.onMove} />;
+    return (
+      <>
+        {switcher}
+        <Board3D fen={rest.fen} orientation={rest.orientation} lastMove={rest.lastMove ?? null} disabled={rest.disabled} mute={rest.mute} cam={prefs.cam} onMove={rest.onMove} />
+      </>
+    );
   }
   return (
     <>
       <style>{CARTOON_CSS}</style>
+      {switcher}
       <Board {...rest} pieces={pieces} colors={[cb.light, cb.dark]} />
     </>
   );

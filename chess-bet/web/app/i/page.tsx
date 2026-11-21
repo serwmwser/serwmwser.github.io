@@ -163,6 +163,11 @@ export default function InvitePage() {
           )}
 
           {!token && <FunnelSignup sent={sent} who={who} onSignup={refresh} />}
+          <section className="card text-center space-y-2">
+            <h2 className="text-base font-bold">{ru ? "💰 Приглашайте друзей и зарабатывайте" : "💰 Invite friends and earn"}</h2>
+            <p className="text-sm opacity-85">{ru ? "Ваша ссылка приглашения работает и как реферальная: доля комиссии с шахмат и баллы TCH за действия друзей." : "Your invite link is also a referral link: a share of the chess fee and TCH points for your friends' activity."}</p>
+            <a href={ROUTES.home + "?tab=earn"} className="btn btn-primary">{ru ? "Открыть «Заработок»" : "Open Earn"}</a>
+          </section>
           <FunnelFeatures tried={fd.features} onPick={onPick} />
 
           <footer className="text-center text-xs opacity-70 space-x-3 pt-1">

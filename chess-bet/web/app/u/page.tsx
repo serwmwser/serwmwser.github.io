@@ -240,6 +240,7 @@ function Profile() {
           <button type="button" onClick={() => setTab(k)} aria-pressed={tab === k} className={tab === k ? "btn btn-primary !py-2" : "btn btn-ghost !py-2"}>{label}{k === "chat" && u.me && unread > 0 ? ` (${unread > 99 ? "99+" : unread})` : ""}{k === "mail" && mailUnread > 0 ? ` (${mailUnread > 99 ? "99+" : mailUnread})` : ""}</button></Fragment>
         ))}
         <a href={ROUTES.exchange} className="btn btn-ghost !py-2">🌍 {ru ? "Языковой обмен" : "Language exchange"}</a>
+        <a href={ROUTES.home + "?tab=earn"} className="btn btn-ghost !py-2">💰 {ru ? "Заработок" : "Earn"}</a>
       </nav>
 
       {tab === "people" && u.me ? (

@@ -97,6 +97,9 @@ export default function Home() {
     const p = new URLSearchParams(location.search).get("game");
     if (p && /^\d+$/.test(p)) setInviteId(Number(p));
     if (new URLSearchParams(location.search).get("tab") === "cartoon") { setCartMode("bot"); setTab("cartoon"); } // ссылка /?tab=cartoon
+    if (new URLSearchParams(location.search).get("view") === "3d") { // ссылка /?tab=cartoon&view=3d включает 3D-доску
+      try { const o = JSON.parse(localStorage.getItem("cb_cprefs") || "{}"); o.view3d = true; localStorage.setItem("cb_cprefs", JSON.stringify(o)); } catch { /* без хранилища */ }
+    }
     const r = new URLSearchParams(location.search).get("room"); // ссылка в бесплатную комнату: /?room=ID
     if (r && /^[0-9a-f]{10}$/.test(r)) { setFriend({ room: r, color: "r", minutes: 60, n: 1 }); setTab("friend"); }
   }, []);

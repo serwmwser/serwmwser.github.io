@@ -3,7 +3,7 @@ import { speak } from "@/lib/cheers";
 import { CARTOON_BOARDS, packOf, PAWN_NAMES, useCartoonPrefs, VOICE_PACKS } from "@/lib/cartoonPrefs";
 import { useApp } from "@/lib/ctx";
 
-/** Личные настройки мультяшного режима: пешки белых и чёрных и голос фигур (видны только вам) */
+/** Личные настройки мультяшного режима: вид доски, пешки белых и чёрных и голос фигур (видны только вам) */
 export default function CartoonSettings() {
   const { lang } = useApp();
   const ru = lang === "ru";
@@ -22,6 +22,14 @@ export default function CartoonSettings() {
       </summary>
       <div className="mt-3 space-y-3 text-sm">
         <p className="text-xs opacity-70">{ru ? "Это видите только вы: у соперника свои настройки." : "Only you see this: your opponent has their own settings."}</p>
+        <div>
+          <div className="opacity-70 mb-1">{ru ? "Вид доски" : "Board view"}</div>
+          <div className="flex gap-2 flex-wrap">
+            <button type="button" aria-pressed={!p.view3d} className={"chip " + (!p.view3d ? "chip-on" : "")} onClick={() => set({ view3d: false })}>{ru ? "Плоская" : "Flat"}</button>
+            <button type="button" aria-pressed={p.view3d} className={"chip " + (p.view3d ? "chip-on" : "")} onClick={() => set({ view3d: true })}>🧊 {ru ? "3D доска" : "3D board"}</button>
+          </div>
+          {p.view3d && <p className="mt-1 text-xs opacity-70">{ru ? "В 3D можно крутить доску пальцем и приближать щипком. Звуков хода и настроения королей в 3D пока нет." : "In 3D you can rotate the board and pinch to zoom. Move sounds and king moods are not in 3D yet."}</p>}
+        </div>
         <div>
           <div className="opacity-70 mb-1">{ru ? "Набор фигур" : "Piece set"}</div>
           <div className="flex gap-2 flex-wrap">

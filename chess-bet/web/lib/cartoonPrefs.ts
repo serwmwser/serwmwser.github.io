@@ -29,8 +29,8 @@ export const CARTOON_BOARDS: CBoard[] = [
 ];
 export const cboardOf = (id: string): CBoard => CARTOON_BOARDS.find((b) => b.id === id) ?? CARTOON_BOARDS[0];
 
-export type CartoonPrefs = { pawnW: number; pawnB: number; pack: string; cboard: string; team: "clay" | "knights" };
-export const DEFAULT_PREFS: CartoonPrefs = { pawnW: 1, pawnB: 3, pack: "std", cboard: "teal", team: "clay" };
+export type CartoonPrefs = { pawnW: number; pawnB: number; pack: string; cboard: string; team: "clay" | "knights"; view3d: boolean };
+export const DEFAULT_PREFS: CartoonPrefs = { pawnW: 1, pawnB: 3, pack: "std", cboard: "teal", team: "clay", view3d: false };
 const KEY = "cb_cprefs";
 const EVT = "cb-cprefs";
 
@@ -38,7 +38,7 @@ export function readPrefs(): CartoonPrefs {
   try {
     const o = JSON.parse(localStorage.getItem(KEY) || "{}");
     const n = (v: unknown, d: number) => (typeof v === "number" && v >= 0 && v < PAWN_NAMES.length ? v : d);
-    return { pawnW: n(o.pawnW, DEFAULT_PREFS.pawnW), pawnB: n(o.pawnB, DEFAULT_PREFS.pawnB), pack: packOf(String(o.pack)).id, cboard: cboardOf(String(o.cboard)).id, team: o.team === "knights" ? "knights" : "clay" };
+    return { pawnW: n(o.pawnW, DEFAULT_PREFS.pawnW), pawnB: n(o.pawnB, DEFAULT_PREFS.pawnB), pack: packOf(String(o.pack)).id, cboard: cboardOf(String(o.cboard)).id, team: o.team === "knights" ? "knights" : "clay", view3d: o.view3d === true };
   } catch { return DEFAULT_PREFS; }
 }
 

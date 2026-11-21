@@ -17,7 +17,16 @@ type Piece = {
   phase: number; x: number; z: number; baseYaw: number; hopT: number | null; wowUntil: number; wow: boolean; checked: boolean;
   tw: { t0: number; D: number; fx: number; fz: number; tx: number; tz: number } | null; dying: number | null;
 };
-type Ctl = { setView: (v: View) => void; newGame: () => void };
+type LastMove = { from: string; to: string } | null;
+type Ctl = { setView: (v: View) => void; newGame: () => void; setFen: (fen: string, last: LastMove) => void };
+/** Параметры для настоящей партии. Без fen доска играет сама с собой (страница /cartoon-3d/). */
+export type Board3DProps = {
+  fen?: string;
+  orientation?: "white" | "black";
+  lastMove?: LastMove;
+  disabled?: boolean;
+  onMove?: (from: string, to: string, promotion?: string) => void;
+};
 
 const S = 1.5;
 const TEAM: Record<Color, { robe: number; acc: number; hat: number; trim: number; hair: number; beard: number }> = {
@@ -177,11 +186,14 @@ const yawOf = (color: Color, type: PType) => (type === "n" ? (color === "w" ? Ma
 
 const VIEW_LABELS: [View, string][] = [["top", "Сверху"], ["tilt", "Под углом 30°"], ["black", "Со стороны чёрных"]];
 
-export default function Board3D() {
+export default function Board3D(props: Board3DProps = {}) {
+  const propsRef = useRef<Board3DProps>(props);
+  propsRef.current = props;
+  const controlled = props.fen !== undefined;
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctl = useRef<Ctl | null>(null);
-  const [view, setViewState] = useState<View>("top");
+  const [view, setViewState] = useState<View>(props.orientation === "black" ? "black" : "top");
   const [err, setErr] = useState(false);
   const [st, setSt] = useState<Status>({ turn: "w", check: false, over: "", last: "" });
 
@@ -212,11 +224,24 @@ export default function Board3D() {
       const m = mk(new THREE.BoxGeometry(a[2], 0.42, a[3]), 0xe59a3d); m.position.set(a[0], -0.08, a[1]); scene.add(m);
     });
     const marks = new THREE.Group(); scene.add(marks);
+    const lastG = new THREE.Group(); scene.add(lastG);
+    const showLast = (lm: LastMove) => {
+      while (lastG.children.length) { const c = lastG.children[0] as THREE.Mesh; lastG.remove(c); c.geometry.dispose(); (c.material as THREE.Material).dispose(); }
+      if (!lm) return;
+      [lm.from, lm.to].forEach((sq) => {
+        if (!/^[a-h][1-8]$/.test(sq)) return;
+        const q = sqXZ(sq);
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(S - 0.08, S - 0.08), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.5 }));
+        m.rotation.x = -Math.PI / 2; m.position.set(q.x, 0.03, q.z); lastG.add(m);
+      });
+    };
     const selRing = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.06, 8, 40), new THREE.MeshBasicMaterial({ color: 0xff7a3d }));
     selRing.rotation.x = Math.PI / 2; selRing.position.y = 0.06; selRing.visible = false; scene.add(selRing);
 
     /* игра */
+    const startFen = propsRef.current.fen;
     let chess = new Chess();
+    if (startFen) { try { chess = new Chess(startFen); } catch { chess = new Chess(); } }
     let pieces: Piece[] = [];
     let selected: Square | null = null;
     let targets = new Map<string, boolean>();
@@ -254,9 +279,9 @@ export default function Board3D() {
       const hist = chess.history();
       setSt({ turn, check, over: msg, last: hist.length ? hist[hist.length - 1] : "" });
     };
-    const newGame = () => {
+    const rebuild = (next: Chess) => {
       pieces.forEach(removePiece); pieces = []; resetSelection();
-      chess = new Chess();
+      chess = next;
       chess.board().forEach((row, r) => row.forEach((cell, c) => { if (cell) pieces.push(makePiece(cell.color, cell.type as PType, toSq(c, r), pieces.length * 0.9)); }));
       sync();
     };
@@ -264,10 +289,10 @@ export default function Board3D() {
       const t = sqXZ(sq); const now = performance.now();
       p.tw = { t0: now, D: 750, fx: p.x, fz: p.z, tx: t.x, tz: t.z }; p.square = sq; p.wowUntil = now + 800;
     };
-    const doMove = (from: Square, to: Square) => {
+    const applyMove = (from: Square, to: Square, promo = "q") => {
       const mover = pieceAt(from); if (!mover) return;
       let mv;
-      try { mv = chess.move({ from, to, promotion: "q" }); } catch { resetSelection(); return; }
+      try { mv = chess.move({ from, to, promotion: promo }); } catch { resetSelection(); return; }
       resetSelection();
       if (mv.captured) {
         const capSq = (mv.flags.includes("e") ? to[0] + from[1] : to) as string;
@@ -282,11 +307,37 @@ export default function Board3D() {
       if (mv.flags.includes("q")) { const rk = pieceAt("a" + from[1]); if (rk) slide(rk, ("d" + from[1]) as Square); }
       sync();
     };
+    /* свой ход: в настоящей партии отдаём ход наружу (правила и сервер проверяет страница партии), в одиночной игре ходим сами */
+    const doMove = (from: Square, to: Square) => {
+      const cb = propsRef.current;
+      if (cb.fen !== undefined) {
+        const pc = pieceAt(from);
+        const promo = pc && pc.type === "p" && (to[1] === "8" || to[1] === "1") ? "q" : undefined;
+        resetSelection();
+        cb.onMove?.(from, to, promo);
+      } else applyMove(from, to);
+    };
+    const newGame = () => { rebuild(new Chess()); showLast(null); };
+    /* позиция пришла снаружи: если это один ход от нашей — показываем его анимацией, иначе собираем доску заново */
+    const setFen = (fen: string, last: LastMove) => {
+      const key = (f: string) => f.split(" ").slice(0, 2).join(" ");
+      if (key(fen) === key(chess.fen())) { showLast(last); return; }
+      let found: { from: Square; to: Square; promotion?: string } | null = null;
+      try {
+        for (const m of chess.moves({ verbose: true })) {
+          const t = new Chess(chess.fen()); t.move({ from: m.from, to: m.to, promotion: m.promotion });
+          if (key(t.fen()) === key(fen)) { found = { from: m.from, to: m.to, promotion: m.promotion }; break; }
+        }
+      } catch { found = null; }
+      if (found) applyMove(found.from, found.to, found.promotion || "q");
+      else { try { rebuild(new Chess(fen)); } catch { /* неверная позиция: оставляем как есть */ } }
+      showLast(last);
+    };
     const onSquare = (sq: Square) => {
-      if (over) return;
+      if (over || propsRef.current.disabled) return;
       if (selected && targets.has(sq)) { doMove(selected, sq); return; }
       const here = pieceAt(sq);
-      if (here && here.color === chess.turn() && !here.tw) {
+      if (here && here.color === chess.turn() && !here.tw && (propsRef.current.fen === undefined || here.color === (propsRef.current.orientation === "black" ? "b" : "w"))) {
         resetSelection(); selected = sq; here.hopT = performance.now(); here.wowUntil = performance.now() + 900;
         const p = sqXZ(sq); selRing.position.set(p.x, 0.06, p.z); selRing.visible = true;
         chess.moves({ square: sq, verbose: true }).forEach((m) => {
@@ -304,12 +355,13 @@ export default function Board3D() {
     const tg = new THREE.Vector3(0, 0.2, 0);
     let az = 0, pol = 0.4, R = 21, aspect = 4 / 3;
     const goalFor = (v: View): [number, number, number] => { const b = BASE_VIEWS[v]; return [b[0], b[1], b[2] * Math.max(1, 1.33 / aspect)]; };
-    let goal = goalFor("top");
+    const view0: View = propsRef.current.orientation === "black" ? "black" : "top";
+    let goal = goalFor(view0);
     const resize = () => {
       const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return;
       renderer.setSize(w, h, false); aspect = w / h; camera.aspect = aspect; camera.updateProjectionMatrix();
     };
-    const ro = new ResizeObserver(resize); ro.observe(box); resize(); R = goalFor("top")[2]; goal = goalFor("top");
+    const ro = new ResizeObserver(resize); ro.observe(box); resize(); goal = goalFor(view0); az = goal[0]; pol = goal[1]; R = goal[2];
 
     const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
     const pick = (e: PointerEvent): Square | null => {
@@ -374,9 +426,9 @@ export default function Board3D() {
       renderer.render(scene, camera);
     };
 
-    newGame();
+    rebuild(chess); showLast(propsRef.current.lastMove ?? null);
     raf = requestAnimationFrame(loop);
-    ctl.current = { setView: (v) => { goal = goalFor(v); }, newGame };
+    ctl.current = { setView: (v) => { goal = goalFor(v); }, newGame, setFen };
 
     return () => {
       alive = false; cancelAnimationFrame(raf); ro.disconnect(); ctl.current = null;
@@ -388,6 +440,19 @@ export default function Board3D() {
     };
   }, []);
 
+  /* новая позиция из партии */
+  useEffect(() => {
+    if (props.fen !== undefined) ctl.current?.setFen(props.fen, props.lastMove ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.fen, props.lastMove?.from, props.lastMove?.to]);
+  /* смена стороны (играем чёрными) */
+  useEffect(() => {
+    if (props.fen === undefined) return;
+    const v: View = props.orientation === "black" ? "black" : "top";
+    setViewState(v); ctl.current?.setView(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.orientation]);
+
   const choose = (v: View) => { setViewState(v); ctl.current?.setView(v); };
   const turnText = st.over || (st.turn === "w" ? "Ход белых" : "Ход чёрных") + (st.check ? ". Шах!" : "");
   const btn = (on: boolean) => "rounded-full border-2 px-4 py-2 text-sm font-bold shadow " + (on ? "border-orange-500 bg-orange-500 text-white" : "border-white bg-white/80 text-slate-900");
@@ -396,14 +461,14 @@ export default function Board3D() {
     <div className="w-full">
       <div className="mb-3 flex flex-wrap gap-2">
         {VIEW_LABELS.map(([v, label]) => <button key={v} type="button" className={btn(view === v)} aria-pressed={view === v} onClick={() => choose(v)}>{label}</button>)}
-        <button type="button" className={btn(false)} onClick={() => ctl.current?.newGame()}>Новая партия</button>
+        {!controlled && <button type="button" className={btn(false)} onClick={() => ctl.current?.newGame()}>Новая партия</button>}
       </div>
       <div ref={boxRef} className="relative aspect-square w-full overflow-hidden rounded-2xl border-2 border-white shadow-lg sm:aspect-[4/3]" style={{ background: "linear-gradient(#7cc8ff,#cdeeff 60%,#fff6e0)" }}>
         <canvas ref={canvasRef} className="block h-full w-full" style={{ touchAction: "none", cursor: "grab" }} aria-label="Трёхмерная шахматная доска с мультяшными фигурами" />
         {err && <div className="absolute inset-0 flex items-center justify-center bg-white p-6 text-center text-slate-900">3D не запустилось на этом устройстве. Попробуйте другой браузер.</div>}
       </div>
-      <p className="mt-2 text-sm font-bold" role="status" aria-live="polite">{turnText}{st.last && !st.over ? " · последний ход " + st.last : ""}</p>
-      <p className="mt-1 text-xs opacity-70">Нажмите на фигуру, затем на подсвеченную клетку. Перетащите сцену, чтобы повернуть камеру, колесо мыши приближает.</p>
+      {!controlled && <p className="mt-2 text-sm font-bold" role="status" aria-live="polite">{turnText}{st.last && !st.over ? " · последний ход " + st.last : ""}</p>}
+      {!controlled && <p className="mt-1 text-xs opacity-70">Нажмите на фигуру, затем на подсвеченную клетку. Перетащите сцену, чтобы повернуть камеру, колесо мыши приближает.</p>}
     </div>
   );
 }

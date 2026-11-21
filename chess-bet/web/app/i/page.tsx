@@ -122,7 +122,7 @@ export default function InvitePage() {
               {ru ? "Общайтесь на своём языке: переводим сообщения сразу. Ничего устанавливать не нужно." : "Chat in your own language: messages are translated instantly. Nothing to install."}
             </p>
             <ul className="flex flex-wrap justify-center gap-1.5 text-xs">
-              {(ru ? ["Без регистрации", "Автоперевод", "Голос и фото", "Работает без сети"] : ["No sign-up", "Auto-translation", "Voice and photos", "Works offline"]).map((t) => (
+              {(ru ? ["Без регистрации", "Автоперевод", "Голос и фото", "Сообщения не пропадают без сети"] : ["No sign-up", "Auto-translation", "Voice and photos", "Messages are kept offline"]).map((t) => (
                 <li key={t} className="rounded-full px-2.5 py-1" style={{ background: "rgba(255,255,255,.55)", color: "#3b2a66" }}>✓ {t}</li>
               ))}
             </ul>

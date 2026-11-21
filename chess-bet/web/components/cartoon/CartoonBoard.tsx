@@ -1,10 +1,17 @@
 "use client";
 import { ComponentProps, ReactElement, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Board from "../Board";
 import { cboardOf, useCartoonPrefs } from "@/lib/cartoonPrefs";
 import Piece, { PieceType } from "./Pieces";
 import Knight from "./Knights";
 import { CARTOON_CSS, type Mood } from "./Character";
+
+// 3D-доска грузится только когда игрок включил 3D (библиотека three тяжёлая и нужна не всем)
+const Board3D = dynamic(() => import("../cartoon3d/Board3D"), {
+  ssr: false,
+  loading: () => <div className="aspect-square w-full animate-pulse rounded-2xl bg-white/10" role="status" aria-label="3D" />,
+});
 
 type BoardProps = ComponentProps<typeof Board>;
 type PieceFn = (a: { squareWidth: number; square?: string }) => ReactElement;
@@ -33,7 +40,8 @@ function build(pawnW: number, pawnB: number, moods: Record<string, Mood>, hop: H
   return out as unknown as BoardProps["pieces"];
 }
 
-/** Доска с мультяшными фигурами: вся логика (ходы, подсветка, превращение, звук) та же, что у обычной доски. */
+/** Доска с мультяшными фигурами: вся логика (ходы, подсветка, превращение, звук) та же, что у обычной доски.
+ *  Если в настройках включён 3D-вид, вместо плоской доски показывается трёхмерная с теми же позицией и ходами. */
 export default function CartoonBoard({ pawnW = 1, pawnB = 0, moods, hop = null, ...rest }: Omit<BoardProps, "pieces"> & { pawnW?: number; pawnB?: number; moods?: Record<string, Mood>; hop?: Hop }) {
   const [prefs] = useCartoonPrefs();
   const cb = cboardOf(prefs.cboard);
@@ -41,6 +49,9 @@ export default function CartoonBoard({ pawnW = 1, pawnB = 0, moods, hop = null, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const knights = prefs.team === "knights";
   const pieces = useMemo(() => build(pawnW, pawnB, moods ?? {}, hop, knights), [pawnW, pawnB, key, knights]);
+  if (prefs.view3d) {
+    return <Board3D fen={rest.fen} orientation={rest.orientation} lastMove={rest.lastMove ?? null} disabled={rest.disabled} onMove={rest.onMove} />;
+  }
   return (
     <>
       <style>{CARTOON_CSS}</style>

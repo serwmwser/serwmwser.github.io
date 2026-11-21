@@ -14,7 +14,7 @@ const ITEMS: Item[] = [
   { href: ROUTES.messages, ru: "Общение", en: "Chat", icon: "💬", also: [ROUTES.feed, ROUTES.join] },
   { href: ROUTES.profile, ru: "Профиль", en: "Profile", icon: "👤" },
   { href: ROUTES.token, ru: "Заработать", en: "Earn", icon: "💰", also: [ROUTES.nft, ROUTES.roadmap, ROUTES.whitepaper] },
-  { href: ROUTES.home + "#games", ru: "Играть", en: "Play", icon: "♞", also: [ROUTES.chess, ROUTES.crypto, ROUTES.puzzles, ROUTES.tournaments] },
+  { href: ROUTES.home + "#games", ru: "Играть", en: "Play", icon: "♞", also: [ROUTES.chess, ROUTES.crypto, ROUTES.puzzles, ROUTES.tournaments, ROUTES.cartoon, ROUTES.cartoon3d] },
 ];
 
 const norm = (p: string) => (p.endsWith("/") ? p : p + "/");

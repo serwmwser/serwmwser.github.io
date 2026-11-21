@@ -19,6 +19,7 @@ export const ROUTES = {
   roadmap: `${BASE}/roadmap/`,
   puzzles: `${BASE}/puzzles/`,
   cartoon: `${BASE}/cartoon/`,
+  cartoon3d: `${BASE}/cartoon-3d/`,
   exchange: `${BASE}/language-exchange/`,
   android: `${BASE}/android/`,
   friends: `${BASE}/find-friends/`,

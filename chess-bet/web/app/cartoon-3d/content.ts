@@ -4,7 +4,7 @@ import type { SeoText } from "@/components/SeoPage";
 export const RU: SeoText = {
  "slug": "cartoon-3d",
  "crumb": "Мульт 3D",
- "ctaHref": "/?tab=cartoon",
+ "ctaHref": "/?tab=cartoon&view=3d",
  "cta": "Играть с ботом в мультяшные шахматы",
  "title": "Мульт 3D: шахматы с объёмными мультяшными фигурами",
  "intro": "Объёмная шахматная доска с весёлыми фигурами-персонажами: они моргают, удивляются шаху и прыгают на клетку. Партию можно сыграть прямо здесь, вдвоём за одним экраном, а доску повернуть и приблизить.",
@@ -79,7 +79,7 @@ export const RU: SeoText = {
 export const EN: SeoText = {
  "slug": "cartoon-3d",
  "crumb": "Cartoon 3D",
- "ctaHref": "/?tab=cartoon",
+ "ctaHref": "/?tab=cartoon&view=3d",
  "cta": "Play cartoon chess against the bot",
  "title": "Cartoon 3D: chess with chunky 3D cartoon pieces",
  "intro": "A 3D chessboard with cheerful character pieces: they blink, gasp at a check and hop onto a square. Play a game right here, two players on one screen, and rotate and zoom the board.",

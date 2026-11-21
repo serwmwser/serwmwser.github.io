@@ -69,7 +69,7 @@ export default function InvitePage() {
     guestClaim(token, g, target)
       .then((r) => {
         try { localStorage.setItem(key, "1"); } catch { /* без хранилища */ }
-        if (!stop && r.moved > 0) setMoved({ n: r.moved, name: r.name });
+        if (!stop && r.moved > 0) { setMoved({ n: r.moved, name: r.name }); track("signup_done"); } // профиль создан: переписка перенесена
       })
       .catch((e) => {
         // «это ваша ссылка» или «переписки нет» — повторять не нужно; сеть и лимит — попробуем в следующий раз

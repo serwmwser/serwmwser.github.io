@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import PageShell from "@/components/PageShell";
 import { useApp } from "@/lib/ctx";
+import { API_URL } from "@/lib/config";
 import { useSocial } from "@/lib/social";
 import { postUrl, profileUrl } from "@/lib/urls";
 import { modAction, modErr, modMe, modReports, modUsers, type ModAction, type ModItem, type ModKind, type ModUser } from "@/lib/mod";
@@ -109,12 +110,81 @@ function Users({ token }: { token: string }) {
   );
 }
 
+type FRow = { open: number; message: number; feature: number; signup_click: number; signup_done: number };
+type FSummary = { days: number; byDay: (FRow & { day: string })[]; bySrc: (FRow & { src: string })[]; features: { id: string; n: number }[]; langs: { lang: string; n: number }[] };
+
+/** Воронка приглашений: открыли ссылку → написали → попробовали функции → нажали «создать профиль» → создали профиль. Без личных данных. */
+function Funnel({ token }: { token: string }) {
+  const { lang } = useApp();
+  const ru = lang === "ru";
+  const [days, setDays] = useState(14);
+  const [d, setD] = useState<FSummary | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let alive = true;
+    const [wallet, tok] = token.split("|");
+    setD(null); setErr("");
+    fetch(`${API_URL}/api/funnel/summary?days=${days}`, { cache: "no-store", headers: { authorization: `Bearer ${tok}`, "x-wallet": wallet } })
+      .then((r) => r.json())
+      .then((j: { ok: boolean; error?: string } & Partial<FSummary>) => { if (!alive) return; if (j.ok) setD(j as FSummary); else setErr(j.error || "error"); })
+      .catch(() => { if (alive) setErr("offline"); });
+    return () => { alive = false; };
+  }, [token, days]);
+
+  const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) + "%" : "—");
+  const total = (rows: FRow[]): FRow => rows.reduce((t, r) => ({ open: t.open + r.open, message: t.message + r.message, feature: t.feature + r.feature, signup_click: t.signup_click + r.signup_click, signup_done: t.signup_done + r.signup_done }), { open: 0, message: 0, feature: 0, signup_click: 0, signup_done: 0 });
+  const head = ru ? ["Открыли", "Написали", "Функции", "«Создать профиль»", "Профиль создан"] : ["Opened", "Wrote", "Features", "“Create profile”", "Profile created"];
+  const th = "px-2 py-1 text-right font-semibold whitespace-nowrap";
+  const td = "px-2 py-1 text-right tabular-nums";
+  const cells = (r: FRow) => [r.open, r.message, r.feature, r.signup_click, r.signup_done].map((v, i) => <td key={i} className={td}>{v}</td>);
+
+  if (err) return <section className="card text-sm" role="alert">{ru ? "Не удалось загрузить воронку: " : "Could not load the funnel: "}{err}</section>;
+  if (!d) return <p className="text-sm opacity-60">…</p>;
+  const t = total(d.byDay);
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {[7, 14, 30].map((n) => <button key={n} type="button" aria-pressed={days === n} className={days === n ? "chip chip-on" : "chip"} onClick={() => setDays(n)}>{n} {ru ? "дн." : "d"}</button>)}
+      </div>
+      <div className="card space-y-1 text-sm">
+        <h2 className="font-bold">{ru ? "Итого за период (уникальные гости)" : "Period total (unique guests)"}</h2>
+        <p>{ru ? "Открыли" : "Opened"}: <b>{t.open}</b> → {ru ? "написали" : "wrote"}: <b>{t.message}</b> ({pct(t.message, t.open)}) → {ru ? "нажали «создать профиль»" : "clicked “create profile”"}: <b>{t.signup_click}</b> ({pct(t.signup_click, t.open)}) → {ru ? "создали профиль" : "created profile"}: <b>{t.signup_done}</b> ({pct(t.signup_done, t.open)})</p>
+        <p className="text-xs opacity-70">{ru ? "Считаются люди, а не события; один гость в день учитывается один раз. Суммы по дням могут быть больше, чем число людей, если гость заходил в разные дни." : "People are counted, not events; one guest counts once per day. Day totals can exceed the number of people if a guest returned on other days."}</p>
+      </div>
+      <div className="card overflow-x-auto">
+        <h2 className="font-bold text-sm mb-1">{ru ? "По источникам (метка ?s= в ссылке или сайт-источник)" : "By source (?s= tag in the link or referring site)"}</h2>
+        <table className="w-full text-xs">
+          <thead><tr><th className="px-2 py-1 text-left">{ru ? "Источник" : "Source"}</th>{head.map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+          <tbody>{d.bySrc.map((r) => <tr key={r.src} className="border-t border-white/10"><td className="px-2 py-1">{r.src}</td>{cells(r)}</tr>)}</tbody>
+        </table>
+      </div>
+      <div className="card overflow-x-auto">
+        <h2 className="font-bold text-sm mb-1">{ru ? "По дням" : "By day"}</h2>
+        <table className="w-full text-xs">
+          <thead><tr><th className="px-2 py-1 text-left">{ru ? "День" : "Day"}</th>{head.map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+          <tbody>{d.byDay.map((r) => <tr key={r.day} className="border-t border-white/10"><td className="px-2 py-1">{r.day}</td>{cells(r)}</tr>)}</tbody>
+        </table>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="card text-xs space-y-1">
+          <h2 className="font-bold text-sm">{ru ? "Какие функции нажимают" : "Features clicked"}</h2>
+          {d.features.length ? d.features.map((x) => <p key={x.id} className="flex justify-between"><span>{x.id}</span><b>{x.n}</b></p>) : <p className="opacity-70">—</p>}
+        </div>
+        <div className="card text-xs space-y-1">
+          <h2 className="font-bold text-sm">{ru ? "Языки посетителей" : "Visitor languages"}</h2>
+          {d.langs.length ? d.langs.map((x) => <p key={x.lang} className="flex justify-between"><span>{x.lang}</span><b>{x.n}</b></p>) : <p className="opacity-70">—</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function AdminPage() {
   const { lang } = useApp();
   const ru = lang === "ru";
   const s = useSocial();
   const [admin, setAdmin] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<"reports" | "users">("reports");
+  const [tab, setTab] = useState<"reports" | "users" | "funnel">("reports");
 
   useEffect(() => {
     if (!s.token) { setAdmin(null); return; }
@@ -136,8 +206,9 @@ export default function AdminPage() {
           <nav className="flex gap-2" aria-label={ru ? "Разделы" : "Sections"}>
             <button type="button" aria-pressed={tab === "reports"} className={tab === "reports" ? "btn btn-primary !py-2" : "btn btn-ghost !py-2"} onClick={() => setTab("reports")}>⚑ {ru ? "Жалобы" : "Reports"}</button>
             <button type="button" aria-pressed={tab === "users"} className={tab === "users" ? "btn btn-primary !py-2" : "btn btn-ghost !py-2"} onClick={() => setTab("users")}>👤 {ru ? "Пользователи" : "Users"}</button>
+            <button type="button" aria-pressed={tab === "funnel"} className={tab === "funnel" ? "btn btn-primary !py-2" : "btn btn-ghost !py-2"} onClick={() => setTab("funnel")}>📊 {ru ? "Воронка" : "Funnel"}</button>
           </nav>
-          {tab === "reports" ? <Reports token={s.token} /> : <Users token={s.token} />}
+          {tab === "reports" ? <Reports token={s.token} /> : tab === "funnel" ? <Funnel token={s.token} /> : <Users token={s.token} />}
         </>
       )}
     </PageShell>

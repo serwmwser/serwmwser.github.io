@@ -28,7 +28,11 @@ export default function CartoonSettings() {
             <button type="button" aria-pressed={!p.view3d} className={"chip " + (!p.view3d ? "chip-on" : "")} onClick={() => set({ view3d: false })}>{ru ? "Плоская" : "Flat"}</button>
             <button type="button" aria-pressed={p.view3d} className={"chip " + (p.view3d ? "chip-on" : "")} onClick={() => set({ view3d: true })}>🧊 {ru ? "3D доска" : "3D board"}</button>
           </div>
-          {p.view3d && <p className="mt-1 text-xs opacity-70">{ru ? "В 3D можно крутить доску пальцем и приближать щипком. Звуков хода и настроения королей в 3D пока нет." : "In 3D you can rotate the board and pinch to zoom. Move sounds and king moods are not in 3D yet."}</p>}
+          <p className="mt-1 text-xs opacity-80" data-id="viewInfo">
+            {ru
+              ? "Виды отличаются. Плоская: ваши пешки-персонажи, набор «Рыцари», настроения королей, звук хода. 3D: объёмные мультяшные фигуры одного вида, доску можно вращать и приближать; цвет доски и звук хода работают, а выбор пешек и набора «Рыцари» здесь не действует."
+              : "The views differ. Flat: your character pawns, the Knights set, king moods and move sound. 3D: volumetric cartoon pieces of one look, you can rotate and zoom the board; the board colour and move sound work, but the pawn choice and the Knights set do not apply here."}
+          </p>
         </div>
         <div>
           <div className="opacity-70 mb-1">{ru ? "Набор фигур" : "Piece set"}</div>

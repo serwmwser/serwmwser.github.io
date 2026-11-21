@@ -42,6 +42,10 @@ export const RU: SeoText = {
   [
    "Набор «Рыцари»",
    "Если нужен более строгий вид, переключитесь на набор рыцарей."
+  ],
+  [
+   "Плоская и 3D доска",
+   "Есть два вида доски, и они отличаются. Плоская: пешки-персонажи, набор рыцарей, настроения королей. 3D доска: объёмные мультяшные фигуры одного вида, доску можно вращать и приближать. Цвет доски и звук хода работают в обоих видах. Переключатель находится в «Мои фигуры и голос → Вид доски»."
   ]
  ],
  "faqH": "Вопросы и ответы",
@@ -57,6 +61,10 @@ export const RU: SeoText = {
   [
    "Работает ли на телефоне?",
    "Да, сайт работает в браузере телефона, его можно добавить на экран как приложение."
+  ],
+  [
+   "Чем отличается 3D доска от плоской?",
+   "Плоская доска показывает ваших пешек-персонажей, набор рыцарей и настроения королей. 3D доска рисует объёмные фигуры одного вида и позволяет вращать доску; выбор пешек и набора рыцарей в 3D не действует. Партия и правила одни и те же, переключаться можно в любой момент."
   ],
   [
    "Видит ли соперник мои настройки?",
@@ -106,6 +114,10 @@ export const EN: SeoText = {
   [
    "Knights set",
    "Prefer a stricter look? Switch to the knights piece set."
+  ],
+  [
+   "Flat and 3D board",
+   "There are two board views and they differ. Flat: character pawns, the knights set and king moods. 3D board: volumetric cartoon pieces of one look, and you can rotate and zoom the board. Board colour and move sound work in both views. The switch is in My pieces and voice > Board view."
   ]
  ],
  "faqH": "FAQ",
@@ -121,6 +133,10 @@ export const EN: SeoText = {
   [
    "Does it work on a phone?",
    "Yes, the site works in a phone browser and can be added to your home screen like an app."
+  ],
+  [
+   "How is the 3D board different from the flat one?",
+   "The flat board shows your character pawns, the knights set and king moods. The 3D board draws volumetric pieces of one look and lets you rotate the board; the pawn choice and the knights set do not apply in 3D. The game and the rules are the same, and you can switch at any time."
   ],
   [
    "Does my opponent see my settings?",

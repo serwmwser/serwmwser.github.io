@@ -63,6 +63,9 @@ export const guestReply = (token: string, g: string, text: string) => call<{ id:
 export const guestRemove = (token: string, id: number) => call<{ removed: boolean }>("/api/guest/remove", { token, post: { id } });
 export const guestFlag = (token: string, id: number, reason = "") => call<Record<string, never>>("/api/guest/flag", { token, post: { id, reason } });
 export const guestBlock = (token: string, g: string, on: boolean) => call<{ blocked: boolean }>("/api/guest/block", { token, post: { g, on } });
+/** Настройка ссылки приглашения: принимает ли она новых гостей */
+export const guestLinkGet = (token: string) => call<{ open: boolean }>("/api/guest/link-settings", { token }).then((r) => r.open);
+export const guestLinkSet = (token: string, open: boolean) => call<{ open: boolean }>("/api/guest/link-settings", { token, post: { open } }).then((r) => r.open);
 
 /** Понятный текст ошибки (ru/en) */
 export function guestError(code: string, ru: boolean): string {
@@ -71,6 +74,7 @@ export function guestError(code: string, ru: boolean): string {
     slow_down: ["Слишком часто, подождите немного", "Too fast, please wait a moment"],
     no_inviter: ["Пригласивший не найден. Проверьте ссылку.", "The person who invited you was not found. Check the link."],
     blocked: ["Пригласивший ограничил переписку", "The person who invited you has restricted this chat"],
+    link_closed: ["Это приглашение сейчас не принимает новых гостей. Попросите друга прислать новую ссылку или включить приём.", "This invitation is not accepting new guests right now. Ask your friend to send a new link or turn it back on."],
     ref: ["В ссылке нет пригласившего", "The link has no inviter"],
     empty: ["Введите сообщение", "Enter a message"],
     auth: ["Нужно войти", "Please sign in"],

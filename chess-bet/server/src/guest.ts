@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS guest_reports(
   msg INTEGER NOT NULL, reason TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS guest_nicks(
   name TEXT PRIMARY KEY, addr TEXT NOT NULL, seen INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS guest_link(inviter TEXT PRIMARY KEY, open INTEGER NOT NULL DEFAULT 1);
 `);
 // миграция: блокировка гостя пригласившим
 const hasCol = (t: string, c: string) => (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).some((r) => r.name === c);
@@ -149,6 +150,8 @@ export async function handleGuest(req: http.IncomingMessage, res: http.ServerRes
       if (limited("gs_ip:" + ip, 100, DAY) || limited("gs_inv:" + inviter, 300, DAY)) return bad("slow_down", 429);
       const name = clean(m.name, 30);
       if (!th) {
+        const lk = db.prepare("SELECT open FROM guest_link WHERE inviter=?").get(inviter) as { open: number } | undefined;
+        if (lk && !lk.open) return bad("link_closed", 403); // владелец выключил приём новых гостей
         if (limited("gs_new:" + ip, 10, DAY)) return bad("slow_down", 429); // не больше 10 новых переписок в сутки с одного адреса
         db.prepare("INSERT INTO guest_threads(g,inviter,name,created) VALUES(?,?,?,?)").run(g, inviter, name, Date.now());
       } else if (name) {
@@ -191,6 +194,16 @@ export async function handleGuest(req: http.IncomingMessage, res: http.ServerRes
 
     // ---- со стороны пригласившего (нужен вход) ----
     if (!viewer) return bad("auth", 401);
+    if (req.method === "GET" && p === "/api/guest/link-settings") { // настройка ссылки приглашения (для владельца)
+      const lk = db.prepare("SELECT open FROM guest_link WHERE inviter=?").get(viewer) as { open: number } | undefined;
+      return out(200, { ok: true, open: lk ? !!lk.open : true });
+    }
+    if (req.method === "POST" && p === "/api/guest/link-settings") {
+      const m = await readBody(req);
+      const open = m.open === false ? 0 : 1;
+      db.prepare("INSERT INTO guest_link(inviter,open) VALUES(?,?) ON CONFLICT(inviter) DO UPDATE SET open=excluded.open").run(viewer, open);
+      return out(200, { ok: true, open: !!open });
+    }
     if (req.method === "GET" && p === "/api/guest/unread") {
       const n = (db.prepare("SELECT COUNT(*) n FROM guest_msgs WHERE inviter=? AND side='g' AND seen=0").get(viewer) as { n: number }).n;
       return out(200, { ok: true, n });

@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Chess, type Square } from "chess.js";
-import { cboardOf, readPrefs } from "@/lib/cartoonPrefs";
+import { cboardOf, readPrefs, useCartoonPrefs } from "@/lib/cartoonPrefs";
+import { getAudio } from "@/lib/sfx";
 
 // 3D-доска с мультяшными фигурами. Настоящие шахматные правила (chess.js): ходы, взятия, рокировка, мат.
 // Камера: перетаскивание поворачивает, колесо мыши и щипок приближают.
@@ -25,6 +26,7 @@ export type Board3DProps = {
   orientation?: "white" | "black";
   lastMove?: LastMove;
   disabled?: boolean;
+  mute?: boolean; // без звука (просмотр истории партии)
   onMove?: (from: string, to: string, promotion?: string) => void;
 };
 
@@ -184,12 +186,27 @@ function buildModel(color: Color, type: PType): { group: THREE.Group; body: THRE
 
 const yawOf = (color: Color, type: PType) => (type === "n" ? (color === "w" ? Math.PI / 2 : -Math.PI / 2) : color === "w" ? Math.PI : 0);
 
+/** Короткий звук хода, как у плоской доски */
+function beep() {
+  try {
+    const ctx = getAudio();
+    if (!ctx) return;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 220; o.type = "triangle";
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.1);
+  } catch { /* звук необязателен */ }
+}
+
 const VIEW_LABELS: [View, string][] = [["top", "Сверху"], ["tilt", "Под углом 30°"], ["black", "Со стороны чёрных"]];
 
 export default function Board3D(props: Board3DProps = {}) {
   const propsRef = useRef<Board3DProps>(props);
   propsRef.current = props;
   const controlled = props.fen !== undefined;
+  const [, setPrefs] = useCartoonPrefs();
+  const firstFen = useRef(true);
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctl = useRef<Ctl | null>(null);
@@ -442,7 +459,10 @@ export default function Board3D(props: Board3DProps = {}) {
 
   /* новая позиция из партии */
   useEffect(() => {
-    if (props.fen !== undefined) ctl.current?.setFen(props.fen, props.lastMove ?? null);
+    if (props.fen === undefined) return;
+    ctl.current?.setFen(props.fen, props.lastMove ?? null);
+    if (firstFen.current) firstFen.current = false;
+    else if (!props.mute) beep();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.fen, props.lastMove?.from, props.lastMove?.to]);
   /* смена стороны (играем чёрными) */
@@ -458,12 +478,13 @@ export default function Board3D(props: Board3DProps = {}) {
   const btn = (on: boolean) => "rounded-full border-2 px-4 py-2 text-sm font-bold shadow " + (on ? "border-orange-500 bg-orange-500 text-white" : "border-white bg-white/80 text-slate-900");
 
   return (
-    <div className="w-full">
-      <div className="mb-3 flex flex-wrap gap-2">
+    <div className={controlled ? "w-full max-w-[560px] mx-auto" : "w-full"}>
+      <div className={"flex flex-wrap gap-2 " + (controlled ? "mb-2" : "mb-3")}>
         {VIEW_LABELS.map(([v, label]) => <button key={v} type="button" className={btn(view === v)} aria-pressed={view === v} onClick={() => choose(v)}>{label}</button>)}
         {!controlled && <button type="button" className={btn(false)} onClick={() => ctl.current?.newGame()}>Новая партия</button>}
+        {controlled && <button type="button" className={btn(false)} onClick={() => setPrefs({ view3d: false })}>Плоская доска</button>}
       </div>
-      <div ref={boxRef} className="relative aspect-square w-full overflow-hidden rounded-2xl border-2 border-white shadow-lg sm:aspect-[4/3]" style={{ background: "linear-gradient(#7cc8ff,#cdeeff 60%,#fff6e0)" }}>
+      <div ref={boxRef} className={"relative aspect-square w-full overflow-hidden rounded-2xl border-2 border-white shadow-lg" + (controlled ? "" : " sm:aspect-[4/3]")} style={{ background: "linear-gradient(#7cc8ff,#cdeeff 60%,#fff6e0)" }}>
         <canvas ref={canvasRef} className="block h-full w-full" style={{ touchAction: "none", cursor: "grab" }} aria-label="Трёхмерная шахматная доска с мультяшными фигурами" />
         {err && <div className="absolute inset-0 flex items-center justify-center bg-white p-6 text-center text-slate-900">3D не запустилось на этом устройстве. Попробуйте другой браузер.</div>}
       </div>

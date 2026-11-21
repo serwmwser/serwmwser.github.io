@@ -50,7 +50,7 @@ export default function CartoonBoard({ pawnW = 1, pawnB = 0, moods, hop = null, 
   const knights = prefs.team === "knights";
   const pieces = useMemo(() => build(pawnW, pawnB, moods ?? {}, hop, knights), [pawnW, pawnB, key, knights]);
   if (prefs.view3d) {
-    return <Board3D fen={rest.fen} orientation={rest.orientation} lastMove={rest.lastMove ?? null} disabled={rest.disabled} onMove={rest.onMove} />;
+    return <Board3D fen={rest.fen} orientation={rest.orientation} lastMove={rest.lastMove ?? null} disabled={rest.disabled} mute={rest.mute} onMove={rest.onMove} />;
   }
   return (
     <>

@@ -47,6 +47,13 @@ export const EN: Content = {
       ["Is posting an ad free?", "Your first ad is free, plus one more free ad for every invited friend who starts using the site. After that an ad costs 1 USDC for 30 days. Renewal costs 1 USDC and top placement costs 3 USDC for 7 days. You pay by sending USDC on Polygon from your wallet."],
       ["Can I put my phone number or a link in an ad?", "No. Links, phone numbers and contacts are not allowed in ads: use the site chat. This protects buyers and sellers from fraud."],
     ] },
+    { h: "Referral program", items: [
+      ["How does the invite link work?", "One link, /i/?u=your_nick, invites a friend to chat without registration and counts as your referral link at the same time."],
+      ["What do I get as a reward?", "Chess: a share of the fee from your friend's paid games. Other actions: internal TCH points for your friend's profile and activity, first listing and dating profile (18+)."],
+      ["How much is it?", "The chess share is 10%, 20% or 30% of half of the fee, depending on how many friends you have (up to 20, from 21, from 101). TCH point amounts are shown in the Earn section and may change."],
+      ["Can I withdraw TCH points?", "No. They are internal in-app points that cannot be withdrawn, sold or exchanged. Income is not guaranteed."],
+      ["What is forbidden?", "Fake activity, fake accounts, self-invitation and spam. Such rewards are cancelled and the account may be blocked."],
+    ] },
     { h: "Rook Club community", items: [
       ["What is Rook Club?", "Rook Club is the community of HiMeet for chess, crypto and NFT fans. You get a public profile, posts with photos, a feed, comments, private messages and voice messages."],
       ["Are private messages encrypted?", "No. Messages are stored on the server and are not end-to-end encrypted. Never send your secret phrase, private keys or passwords in a message."],
@@ -99,6 +106,13 @@ export const RU: Content = {
       ["Переводятся ли объявления и чаты?", "Да. Объявления и сообщения в чате можно перевести на ваш язык одним нажатием, чтобы покупатель и продавец с разными языками понимали друг друга. Перевод автоматический, доступен вошедшим пользователям с разумными лимитами и может содержать ошибки."],
       ["Размещение объявления бесплатное?", "Первое объявление бесплатно, плюс ещё одно за каждого приглашённого друга, который начал пользоваться сайтом. Дальше объявление стоит 1 USDC за 30 дней, продление 1 USDC, закрепление вверху 3 USDC за 7 дней. Оплата переводом USDC в сети Polygon из вашего кошелька."],
       ["Можно ли указать в объявлении телефон или ссылку?", "Нет. Ссылки, телефоны и контакты в объявлениях запрещены: общайтесь в чате сайта. Так покупатели и продавцы защищены от мошенничества."],
+    ] },
+    { h: "Реферальная программа", items: [
+      ["Как работает ссылка приглашения?", "Одна ссылка /i/?u=ваш_ник приглашает друга в чат без регистрации и одновременно считается вашей реферальной ссылкой."],
+      ["За что я получаю награду?", "Шахматы: долю комиссии с платных партий друга. Остальное: внутренние баллы TCH за профиль и активность друга, его первое объявление и анкету знакомств (18+)."],
+      ["Сколько это?", "Доля в шахматах: 10%, 20% или 30% от половины комиссии, в зависимости от числа друзей (до 20, от 21, от 101). Размеры баллов TCH указаны в разделе «Заработок» и могут меняться."],
+      ["Можно ли вывести баллы TCH?", "Нет. Это внутренние баллы приложения: их нельзя вывести, продать или обменять. Доход не гарантирован."],
+      ["Что запрещено?", "Накрутка, фиктивные аккаунты, самоприглашение и спам. Такие награды отменяются, а аккаунт может быть заблокирован."],
     ] },
     { h: "Сообщество Rook Club", items: [
       ["Что такое Rook Club?", "Rook Club это сообщество HiMeet для любителей шахмат, крипты и NFT. У вас есть публичный профиль, посты с фото, лента, комментарии, личные и голосовые сообщения."],

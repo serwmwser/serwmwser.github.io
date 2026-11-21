@@ -28,6 +28,8 @@ const RU: Sec[] = [
   ]],
   ["6. Реферальная программа", [
     "Пригласивший получает долю комиссии с платных партий приглашённых друзей по уровням, указанным в разделе «Заработок». Друг засчитывается после первой платной партии.",
+    "Шахматы: уровень зависит от числа друзей (до 20, от 21, от 101) и даёт 10%, 20% или 30% от половины комиссии. Выплата идёт через смарт-контракт.",
+    "Баллы TCH: за другие действия приглашённых (профиль и активность, первое объявление, анкета знакомств 18+) начисляются внутренние баллы TCH. Это учётные баллы внутри приложения: их нельзя вывести, продать или обменять, они не являются деньгами, ценной бумагой или обещанием дохода. Начисление идёт не раньше чем через 24 часа после регистрации приглашённого, действуют суточные лимиты, размеры и правила могут меняться. Накрутка, фиктивные аккаунты и самоприглашение запрещены: такие начисления отменяются, а аккаунт может быть заблокирован.",
     "Доход не гарантирован. Условия, уровни и проценты могут меняться, о важных изменениях мы сообщим в приложении. Спам, обман и накрутка запрещены и ведут к отказу в выплатах. Налоги со своего дохода вы платите сами.",
   ]],
   ["7. Планы и токен", [
@@ -93,6 +95,8 @@ const EN: Sec[] = [
   ]],
   ["6. Referral program", [
     "The inviter receives a share of the fee from paid games of invited friends according to the levels shown in the Earn section. A friend counts after their first paid game.",
+    "Chess: the level depends on the number of friends (up to 20, from 21, from 101) and gives 10%, 20% or 30% of half of the fee. Payouts go through the smart contract.",
+    "TCH points: for other actions of invited users (profile and activity, a first listing, a dating profile 18+) internal TCH points are credited. These are in-app accounting points: they cannot be withdrawn, sold or exchanged, and they are not money, a security or a promise of income. Crediting starts no earlier than 24 hours after the invited user signs up, daily limits apply, and amounts and rules may change. Fake activity, fake accounts and self-invitation are forbidden: such credits are cancelled and the account may be blocked.",
     "Income is not guaranteed. Terms, levels and percentages may change, and we will announce important changes in the app. Spam, deception and fake activity are forbidden and lead to a refusal of payouts. You pay taxes on your own income.",
   ]],
   ["7. Plans and token", [

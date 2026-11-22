@@ -37,6 +37,13 @@ function waitVisible<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+/** Сбрасывает сохранённые сессии WalletConnect: сломанная старая сессия не даёт подписать, новое подключение создаст чистую */
+function dropWcStorage() {
+  try {
+    for (const k of Object.keys(localStorage)) if (/^(wc@2|walletconnect)/i.test(k)) localStorage.removeItem(k);
+  } catch { /* без хранилища */ }
+}
+
 async function create(account: Acc): Promise<string | null> {
   const ts = Date.now();
   const message = `ChessBet session\nAddress: ${account.address}\nTime: ${ts}`;
@@ -47,7 +54,16 @@ async function create(account: Acc): Promise<string | null> {
     if ((e as Error)?.message === "stale") {
       alog("кошелёк не ответил за 25 с: отключаем его, подключите заново");
       try { window.dispatchEvent(new Event(STALE_EVENT)); } catch { /* вне браузера */ }
-    } else alog("кошелёк вернул ошибку: " + String((e as Error)?.message || e).slice(0, 60));
+    } else {
+      const em = String((e as Error)?.message || e || "");
+      alog("кошелёк вернул ошибку: " + em.slice(0, 60));
+      if (/Cannot read propert|reading ['"]?\w+['"]?\)/i.test(em)) { // сбой внутри подключения (повреждённая сессия WalletConnect)
+        alog("подключение кошелька повреждено: сбрасываем, подключите заново");
+        dropWcStorage();
+        try { window.dispatchEvent(new Event(STALE_EVENT)); } catch { /* вне браузера */ }
+        throw new Error("stale");
+      }
+    }
     throw e;
   }
   alog("подпись получена, отправляем на сервер");

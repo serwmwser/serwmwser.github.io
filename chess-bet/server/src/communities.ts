@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type http from "node:http";
 import Database from "better-sqlite3";
-import { CATEGORIES, categoriesOr, isCategory } from "./categories.js";
+import { CATEGORIES, categoriesOr, isCategory, LANGUAGES, languageOr } from "./categories.js";
 import { pricingReady, publicPricing, REQUIRE_PAYMENT } from "./pricing.js";
 
 const DB_FILE = process.env.SOCIAL_DB || "./data/social.db";
@@ -40,6 +40,8 @@ addCol("community_members", "plan", "INTEGER NOT NULL DEFAULT 0");
 addCol("community_members", "expires", "INTEGER NOT NULL DEFAULT 0");
 addCol("communities", "category", "TEXT NOT NULL DEFAULT 'other'");
 addCol("communities", "categories", "TEXT NOT NULL DEFAULT ''"); // до 3 категорий через запятую, первая главная
+addCol("communities", "language", "TEXT NOT NULL DEFAULT ''"); // язык сообщества; пусто = многоязычное
+addCol("community_plans", "trial_days", "INTEGER NOT NULL DEFAULT 0"); // пробный период тарифа, дней
 // Оплаченный тариф создателя сообществ (его записывает этап оплаты; пока записей нет, создавать может только администратор)
 db.exec("CREATE TABLE IF NOT EXISTS creator_subs(addr TEXT PRIMARY KEY, plan TEXT NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL)");
 /** Записать (или продлить) оплаченный тариф создателя: вызывается после подтверждения платежа */
@@ -92,8 +94,8 @@ function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
 const clean = (s: unknown, max: number) =>
   String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
 
-type Row = { slug: string; name: string; descr: string; cover: string; owner: string; status: string; visibility: string; category: string; categories: string; created: number; updated: number };
-type Plan = { id: number; community: string; name: string; period: string; price_micro: number; active: number };
+type Row = { slug: string; name: string; descr: string; cover: string; owner: string; status: string; visibility: string; category: string; categories: string; language: string; created: number; updated: number };
+type Plan = { id: number; community: string; name: string; period: string; price_micro: number; active: number; trial_days: number };
 type Mem = { community: string; addr: string; role: string; state: string; plan: number; expires: number; joined: number };
 
 const getC = (slug: string) => db.prepare("SELECT * FROM communities WHERE slug=?").get(slug) as Row | undefined;
@@ -126,13 +128,20 @@ const countOf = (slug: string): number =>
     ? (db.prepare("SELECT COUNT(*) AS n FROM users WHERE banned=0").get() as { n: number }).n
     : (db.prepare("SELECT COUNT(*) AS n FROM community_members WHERE community=? AND state='active' AND (expires=0 OR expires>?)").get(slug, Date.now()) as { n: number }).n;
 const roleOf = (c: Row, a: string): string => (!a ? "" : c.owner === a || (c.slug === MAIN && isAdm(a)) ? "owner" : stateOf(c.slug, a) === "member" ? (memOf(c.slug, a)?.role || "member") : "");
+/** Сколько человек вступило за последние 7 дней (для сортировки «Популярные сейчас») */
+const recentOf = (slug: string): number => {
+  const since = Date.now() - 7 * DAY;
+  return slug === MAIN
+    ? (db.prepare("SELECT COUNT(*) AS n FROM users WHERE created>? AND banned=0").get(since) as { n: number }).n
+    : (db.prepare("SELECT COUNT(*) AS n FROM community_members WHERE community=? AND state='active' AND joined>?").get(slug, since) as { n: number }).n;
+};
 const card = (c: Row, viewer: string) => {
   const plans = plansOf(c.slug);
   return {
     slug: c.slug, name: c.name, descr: c.descr, cover: c.cover, owner: ownerName(c.owner), members: countOf(c.slug),
     visibility: c.visibility, category: c.category, categories: (c.categories || c.category).split(",").filter(Boolean), role: roleOf(c, viewer), state: stateOf(c.slug, viewer), hidden: c.status !== "active", created: c.created,
-    paid: plans.some((p) => p.price_micro > 0),
-    plans: plans.map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price_micro / 1e6 })),
+    paid: plans.some((p) => p.price_micro > 0), trial: plans.some((p) => p.trial_days > 0), language: c.language, recent: recentOf(c.slug),
+    plans: plans.map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price_micro / 1e6, trial: p.trial_days })),
   };
 };
 
@@ -159,7 +168,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       return out(200, { ok: true, community: card(c, viewer) });
     }
 
-    if (req.method === "GET" && p === "/api/communities/categories") return out(200, { ok: true, items: CATEGORIES });
+    if (req.method === "GET" && p === "/api/communities/categories") return out(200, { ok: true, items: CATEGORIES, languages: LANGUAGES });
     if (req.method === "GET" && p === "/api/communities/pricing") return out(200, { ok: true, ...publicPricing(), canCreate: !REQUIRE_PAYMENT || isAdm(viewer) || (pricingReady() && !!viewer && hasCreatorPlan(viewer)) });
 
     if (!viewer) return bad("auth", 401);
@@ -203,7 +212,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (limited("com_new:" + viewer, 5, DAY)) return bad("slow_down", 429);
       const now = Date.now();
       const cats = categoriesOr(m.categories ?? m.category);
-      db.prepare("INSERT INTO communities(slug,name,descr,owner,visibility,category,categories,created,updated) VALUES(?,?,?,?,?,?,?,?,?)").run(slug, name, descr, viewer, vis(m.visibility, "open"), cats[0], cats.join(","), now, now);
+      db.prepare("INSERT INTO communities(slug,name,descr,owner,visibility,category,categories,language,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)").run(slug, name, descr, viewer, vis(m.visibility, "open"), cats[0], cats.join(","), languageOr(m.language), now, now);
       db.prepare("INSERT INTO community_members(community,addr,role,state,joined) VALUES(?,?,'owner','active',?)").run(slug, viewer, now);
       return out(200, { ok: true, community: card(getC(slug) as Row, viewer) });
     }
@@ -227,6 +236,10 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (planId) {
         const pl = plansOf(slug).find((x) => x.id === planId);
         if (!pl) return bad("bad_plan");
+        if (pl.price_micro > 0 && pl.trial_days > 0 && !cur) { // пробный период: доступ на N дней без оплаты, один раз на человека
+          db.prepare("INSERT INTO community_members(community,addr,role,state,plan,expires,joined) VALUES(?,?,'member','active',?,?,?)").run(slug, viewer, planId, Date.now() + pl.trial_days * DAY, Date.now());
+          return out(200, { ok: true, community: card(c, viewer) });
+        }
         if (pl.price_micro > 0) return bad("payment_not_supported"); // оплата в USDC будет отдельным этапом
       }
       if (cur?.state === "pending") return out(200, { ok: true, community: card(c, viewer) });
@@ -262,7 +275,8 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (cover && !/^https:\/\/[^\s"'<>]{3,300}$/.test(cover)) return bad("bad_cover");
       const visibility = slug === MAIN ? "open" : vis(m.visibility, c.visibility);
       const cats = m.categories === undefined && m.category === undefined ? (c.categories || c.category).split(",").filter(Boolean) : categoriesOr(m.categories ?? m.category);
-      db.prepare("UPDATE communities SET name=?, descr=?, cover=?, visibility=?, category=?, categories=?, updated=? WHERE slug=?").run(name, descr, cover, visibility, cats[0], cats.join(","), Date.now(), slug);
+      const language = m.language === undefined ? c.language : languageOr(m.language);
+      db.prepare("UPDATE communities SET name=?, descr=?, cover=?, visibility=?, category=?, categories=?, language=?, updated=? WHERE slug=?").run(name, descr, cover, visibility, cats[0], cats.join(","), language, Date.now(), slug);
       return out(200, { ok: true, community: card(getC(slug) as Row, viewer) });
     }
 
@@ -275,7 +289,8 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (!(PERIODS as readonly string[]).includes(period)) return bad("bad_period");
       if (!Number.isFinite(price) || price < 0 || price > MAX_PRICE_USDC) return bad("bad_price");
       if (plansOf(slug).length >= MAX_PLANS) return bad("too_many_plans");
-      db.prepare("INSERT INTO community_plans(community,name,period,price_micro,created) VALUES(?,?,?,?,?)").run(slug, name, period, Math.round(price * 1e6), Date.now());
+      const trial = Math.max(0, Math.min(30, Math.floor(Number(m.trial) || 0))); // пробный период, 0–30 дней
+      db.prepare("INSERT INTO community_plans(community,name,period,price_micro,trial_days,created) VALUES(?,?,?,?,?,?)").run(slug, name, period, Math.round(price * 1e6), trial, Date.now());
       return out(200, { ok: true, community: card(c, viewer) });
     }
 

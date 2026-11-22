@@ -39,6 +39,18 @@ export const CATEGORIES: Category[] = [
   { slug: "other", ru: "Другое", en: "Other", icon: "✨" },
 ];
 
+/** Языки сообществ для фильтра каталога. Пустой язык у сообщества значит «многоязычное» (показывается при любом выбранном языке) */
+export const LANGUAGES: { code: string; name: string }[] = [
+  { code: "en", name: "English" }, { code: "ru", name: "Русский" }, { code: "es", name: "Español" }, { code: "de", name: "Deutsch" },
+  { code: "fr", name: "Français" }, { code: "pt", name: "Português" }, { code: "it", name: "Italiano" }, { code: "zh", name: "中文" },
+  { code: "ja", name: "日本語" }, { code: "ko", name: "한국어" }, { code: "ar", name: "العربية" }, { code: "hi", name: "हिन्दी" },
+  { code: "tr", name: "Türkçe" }, { code: "uk", name: "Українська" }, { code: "pl", name: "Polski" }, { code: "id", name: "Bahasa Indonesia" },
+  { code: "vi", name: "Tiếng Việt" },
+];
+const LANG_CODES = new Set(LANGUAGES.map((l) => l.code));
+/** Допустимый код языка или пустая строка (многоязычное) */
+export const languageOr = (s: unknown): string => (typeof s === "string" && LANG_CODES.has(s) ? s : "");
+
 /** Категория по умолчанию, если владелец ничего не выбрал */
 export const DEFAULT_CATEGORY = "other";
 

@@ -6,6 +6,7 @@ import { getToken } from "./session";
 export type LinkInfo = { main: string; current: string; alts: { addr: string; created: number }[] };
 
 const PENDING = "cb_link_main"; // адрес основного профиля, пока человек подключает второй вход
+const PENDING_MS = 10 * 60 * 1000; // запись живёт 10 минут: вход через Google на телефоне может открыться в другом окне
 
 /** Токен сайта имеет вид «адрес|токен»: в заголовки уходит и то и другое */
 async function call<T>(path: string, token: string, post?: unknown): Promise<T> {
@@ -38,9 +39,16 @@ export function addLink(token: string, main: string) {
 export const removeLink = (token: string, alt: string) => call<{ removed: number }>("/api/links/remove", token, { alt });
 
 /** Запомнить, к какому профилю привязываем (живёт до закрытия вкладки) */
-export function setPendingLink(main: string) { try { sessionStorage.setItem(PENDING, main.toLowerCase()); } catch { /* без хранилища */ } }
-export function getPendingLink(): string { try { return sessionStorage.getItem(PENDING) || ""; } catch { return ""; } }
-export function clearPendingLink() { try { sessionStorage.removeItem(PENDING); } catch { /* без хранилища */ } }
+export function setPendingLink(main: string) { try { localStorage.setItem(PENDING, `${main.toLowerCase()}|${Date.now()}`); } catch { /* без хранилища */ } }
+export function getPendingLink(): string {
+  try {
+    const [a, t] = (localStorage.getItem(PENDING) || "").split("|");
+    if (/^0x[0-9a-f]{40}$/.test(a || "") && Date.now() - Number(t) < PENDING_MS) return a;
+    localStorage.removeItem(PENDING);
+  } catch { /* без хранилища */ }
+  return "";
+}
+export function clearPendingLink() { try { localStorage.removeItem(PENDING); } catch { /* без хранилища */ } }
 
 /** Понятный текст ошибки */
 export function linkErr(e: unknown, ru: boolean): string {

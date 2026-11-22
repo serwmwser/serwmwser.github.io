@@ -24,6 +24,7 @@ import PostComposer, { uploadImage } from "@/components/PostComposer";
 import { useApp } from "@/lib/ctx";
 import { shortAddr } from "@/lib/config";
 import { absoluteUrl, profileUrl, ROUTES } from "@/lib/urls";
+import { modMe } from "@/lib/mod";
 import { errText, follow, getFeed, getPosts, getUser, INTERESTS, LANGS, saveProfile, useSocial, type SPost, type SUser } from "@/lib/social";
 
 type Tab = "posts" | "media" | "feed" | "chat" | "mail" | "tch" | "people";
@@ -40,6 +41,13 @@ function Profile() {
   const target = asked || s.me?.name || "";
 
   const [u, setU] = useState<SUser | null>(null);
+  const [isMod, setIsMod] = useState(false); // кнопка «Модерация» видна только модератору (проверка на сервере)
+  useEffect(() => {
+    if (!s.token) { setIsMod(false); return; }
+    let alive = true;
+    modMe(s.token).then((a) => { if (alive) setIsMod(a); }).catch(() => { if (alive) setIsMod(false); });
+    return () => { alive = false; };
+  }, [s.token]);
   const [missing, setMissing] = useState(false);
   const [tab, setTab] = useState<Tab>(sp.get("tab") === "chat" ? "chat" : sp.get("tab") === "mail" ? "mail" : sp.get("tab") === "tch" ? "tch" : sp.get("tab") === "people" ? "people" : "posts");
   const [posts, setPosts] = useState<SPost[]>([]);
@@ -241,6 +249,7 @@ function Profile() {
         ))}
         <a href={ROUTES.exchange} className="btn btn-ghost !py-2">🌍 {ru ? "Языковой обмен" : "Language exchange"}</a>
         <a href={ROUTES.home + "?tab=earn"} className="btn btn-ghost !py-2">💰 {ru ? "Заработок" : "Earn"}</a>
+        {isMod && <a href="/admin/" className="btn btn-ghost !py-2">⚙ {ru ? "Модерация" : "Moderation"}</a>}
       </nav>
 
       {tab === "people" && u.me ? (

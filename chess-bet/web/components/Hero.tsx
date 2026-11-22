@@ -5,7 +5,7 @@ import { useActiveAccount, useConnectModal } from "thirdweb/react";
 import { chain, client } from "@/lib/config";
 import { useApp } from "@/lib/ctx";
 import type { Lang } from "@/lib/i18n";
-import { wallets } from "./Header";
+import { emailWallets, wallets } from "./Header";
 import { TrustBlock } from "./PausePage";
 
 type T = { net: string; h1: string; sub: string; cta: string; ctaBot: string; sl: string[]; lb: string[]; how: string; st: string[]; tr: string[]; resp: string };
@@ -163,7 +163,10 @@ export default function Hero({ onBot, onEarn }: { onBot: () => void; onEarn?: ()
   const { connect } = useConnectModal();
   const reduce = useReducedMotion();
   const x = D[lang] ?? D.en;
-  const start = () => { void connect({ client, chain, wallets, theme: dark ? "dark" : "light", size: "compact", title: "HiMeet" }); };
+  const [injected, setInjected] = useState(false); // есть расширение или браузер кошелька
+  useEffect(() => { setInjected(!!(window as unknown as { ethereum?: unknown }).ethereum); }, []);
+  const primaryEmail = !injected; // на телефоне и в приложении главная кнопка входит по почте или Google
+  const start = (list: typeof wallets = wallets) => { void connect({ client, chain, wallets: list, theme: dark ? "dark" : "light", size: "compact", title: "HiMeet" }); };
 
   // Уже вошедшему игроку показываем только короткий мотивирующий слоган
   if (account) {
@@ -201,10 +204,13 @@ export default function Hero({ onBot, onEarn }: { onBot: () => void; onEarn?: ()
       </div>
 
       <div className="relative flex flex-col sm:flex-row gap-3 justify-center">
-        <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} onClick={start} className="btn btn-primary text-base px-7 py-3.5 shadow-glow">♛ {x.cta}</motion.button>
+        <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} onClick={() => start(primaryEmail ? emailWallets : wallets)} className="btn btn-primary text-base px-7 py-3.5 shadow-glow">♛ {x.cta}</motion.button>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onBot} className="btn text-base px-6 py-3.5 text-[#06293a]" style={{ background: "linear-gradient(90deg,#22d8f0,#1cb0f6)", boxShadow: "0 4px 0 rgba(0,0,0,.2)" }}>🤖 {x.ctaBot}</motion.button>
         {onEarn && <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onEarn} className="btn text-base px-6 py-3.5 text-[#3a2300]" style={{ background: "linear-gradient(90deg,#ffc800,#ff9600)", boxShadow: "0 4px 0 rgba(0,0,0,.2)" }}>💰 {lang === "ru" ? "Заработай" : "Earn"}</motion.button>}
       </div>
+      <button type="button" className="relative text-sm underline text-white/80" onClick={() => start(primaryEmail ? wallets : emailWallets)}>
+        {primaryEmail ? (lang === "ru" ? "У меня есть крипто-кошелёк" : "I have a crypto wallet") : (lang === "ru" ? "Войти через почту или Google" : "Sign in with email or Google")}
+      </button>
 
       <TrustBlock className="relative" />
 

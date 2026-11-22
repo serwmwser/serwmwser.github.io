@@ -4,7 +4,7 @@ import { useActiveWallet, useConnectModal } from "thirdweb/react";
 import { chain, client } from "@/lib/config";
 import { useApp } from "@/lib/ctx";
 import { AUTO_OFF, errText, useSocial } from "@/lib/social";
-import { wallets } from "./Header";
+import { emailWallets, wallets } from "./Header";
 import { useAuthLog } from "@/lib/authlog";
 import { needsTap } from "@/lib/signmode";
 import WalletBrowserLinks from "./WalletBrowserLinks";
@@ -23,6 +23,9 @@ export default function LoginPrompt({ text }: { text?: string }) {
   const tap = needsTap(wallet?.id);
   const [slow, setSlow] = useState(false); // вход не завершился за 20 с
   const [off, setOff] = useState(false); // подпись отклонена или автоматический вход остановлен
+  const [injected, setInjected] = useState(false); // есть расширение или браузер кошелька
+  useEffect(() => { setInjected(!!(window as unknown as { ethereum?: unknown }).ethereum); }, []);
+  const primaryEmail = !injected; // без кошелька в браузере (телефон, приложение) главная кнопка: почта или Google
 
   useEffect(() => {
     if (!addr || token) { setSlow(false); setOff(false); return; }
@@ -33,9 +36,9 @@ export default function LoginPrompt({ text }: { text?: string }) {
 
   if (token) return null;
 
-  const click = async () => {
+  const click = async (list: typeof wallets = wallets) => {
     if (!addr) {
-      try { await connect({ client, chain, wallets, theme: dark ? "dark" : "light", size: "compact", title: "HiMeet" }); } catch { /* окно закрыли */ }
+      try { await connect({ client, chain, wallets: list, theme: dark ? "dark" : "light", size: "compact", title: "HiMeet" }); } catch { /* окно закрыли */ }
       return;
     }
     try { await signIn(); } catch (e) { toast(errText(e, ru), "err"); }
@@ -57,7 +60,19 @@ export default function LoginPrompt({ text }: { text?: string }) {
       {addr && showButton && (tap || off) && !busy && (
         <p className="text-sm opacity-80">{ru ? "Нажмите «Войти»: откроется кошелёк. Подтвердите там бесплатную подпись и вернитесь на сайт." : "Press “Sign in”: your wallet will open. Confirm the free signature there and come back."}</p>
       )}
-      {showButton && (
+      {showButton && !addr && (
+        <div className="flex flex-col items-center gap-2">
+          <button type="button" onClick={() => void click(primaryEmail ? emailWallets : wallets)}
+            className="rounded-2xl bg-white px-6 py-3 text-base font-semibold text-black shadow">
+            {primaryEmail ? (ru ? "Войти через почту или Google" : "Sign in with email or Google") : (ru ? "Подключить кошелёк" : "Connect wallet")}
+          </button>
+          <button type="button" className="text-sm underline opacity-90" onClick={() => void click(primaryEmail ? wallets : emailWallets)}>
+            {primaryEmail ? (ru ? "У меня есть крипто-кошелёк" : "I have a crypto wallet") : (ru ? "Войти через почту или Google" : "Sign in with email or Google")}
+          </button>
+          <p className="text-xs opacity-70 max-w-xs">{ru ? "Почта или Google: без кошелька и установки, вход в одно касание. Позже профиль можно привязать к кошельку." : "Email or Google: no wallet or install needed, one-tap sign-in. You can link the profile to a wallet later."}</p>
+        </div>
+      )}
+      {showButton && addr && (
         <button type="button" disabled={busy} onClick={() => void click()}
           className="rounded-2xl bg-white px-6 py-3 text-base font-semibold text-black shadow disabled:opacity-60">
           {label}

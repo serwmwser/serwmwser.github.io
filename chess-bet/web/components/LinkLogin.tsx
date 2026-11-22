@@ -30,6 +30,7 @@ export default function LinkLogin() {
   useEffect(() => {
     const pend = getPendingLink();
     if (!token || !addr || !pend) return;
+    if (token.split("|")[0] !== addr.toLowerCase()) return; // токен ещё от прошлого входа: ждём токен нового
     if (pend === addr.toLowerCase()) { clearPendingLink(); return; } // выбрали тот же вход
     const k = pend + ">" + addr.toLowerCase();
     if (done.current === k) return;

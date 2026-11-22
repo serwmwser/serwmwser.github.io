@@ -34,6 +34,8 @@ export const CATEGORIES: Category[] = [
   { slug: "parenting", ru: "Семья и дети", en: "Parenting", icon: "👨‍👩‍👧" },
   { slug: "travel", ru: "Путешествия", en: "Travel", icon: "✈️" },
   { slug: "nature", ru: "Природа и активный отдых", en: "Nature & Outdoors", icon: "🏕" },
+  { slug: "messenger", ru: "Мессенджеры и чаты", en: "Messengers & Chat", icon: "💬" },
+  { slug: "classifieds", ru: "Объявления и барахолка", en: "Classifieds", icon: "🛍" },
   { slug: "other", ru: "Другое", en: "Other", icon: "✨" },
 ];
 
@@ -44,3 +46,10 @@ const SLUGS = new Set(CATEGORIES.map((c) => c.slug));
 export const isCategory = (s: string): boolean => SLUGS.has(s);
 /** Допустимая категория или категория по умолчанию */
 export const categoryOr = (s: unknown): string => (typeof s === "string" && SLUGS.has(s) ? s : DEFAULT_CATEGORY);
+/** До 3 допустимых категорий (первая главная); принимает список или одну категорию, без повторов */
+export function categoriesOr(input: unknown): string[] {
+  const arr = Array.isArray(input) ? input : [input];
+  const out: string[] = [];
+  for (const x of arr) if (typeof x === "string" && SLUGS.has(x) && !out.includes(x)) out.push(x);
+  return out.length ? out.slice(0, 3) : [DEFAULT_CATEGORY];
+}

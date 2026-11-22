@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type http from "node:http";
 import Database from "better-sqlite3";
-import { CATEGORIES, categoryOr, isCategory } from "./categories.js";
+import { CATEGORIES, categoriesOr, isCategory } from "./categories.js";
 import { pricingReady, publicPricing, REQUIRE_PAYMENT } from "./pricing.js";
 
 const DB_FILE = process.env.SOCIAL_DB || "./data/social.db";
@@ -39,6 +39,7 @@ addCol("community_members", "state", "TEXT NOT NULL DEFAULT 'active'");
 addCol("community_members", "plan", "INTEGER NOT NULL DEFAULT 0");
 addCol("community_members", "expires", "INTEGER NOT NULL DEFAULT 0");
 addCol("communities", "category", "TEXT NOT NULL DEFAULT 'other'");
+addCol("communities", "categories", "TEXT NOT NULL DEFAULT ''"); // до 3 категорий через запятую, первая главная
 // Оплаченный тариф создателя сообществ (его записывает этап оплаты; пока записей нет, создавать может только администратор)
 db.exec("CREATE TABLE IF NOT EXISTS creator_subs(addr TEXT PRIMARY KEY, plan TEXT NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL)");
 /** Записать (или продлить) оплаченный тариф создателя: вызывается после подтверждения платежа */
@@ -61,6 +62,9 @@ const isAdm = (a: string) => !!a && ADMINS.has(a.toLowerCase());
   db.prepare("INSERT OR IGNORE INTO communities(slug,name,descr,owner,created,updated) VALUES(?,?,?,?,?,?)")
     .run(MAIN, "HiMeet", "Общение без языковых барьеров: чат с переводом, шахматы, знакомства, объявления и звонки в одном приложении.", owner, now, now);
 }
+
+// HiMeet относится сразу к нескольким категориям: соцсети, игры, знакомства, объявления, мессенджеры
+db.prepare("UPDATE communities SET categories=?, category=? WHERE slug=? AND categories=''").run("social,gaming,relationships,classifieds,messenger", "social", "himeet");
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{2,29}$/;
 const RESERVED = new Set([MAIN, "admin", "api", "www", "u", "i", "c", "new", "create", "discovery", "community", "communities", "feed", "ads", "dating", "chess", "faq", "terms", "about", "profile", "me", "mod", "help", "support"]);
@@ -88,7 +92,7 @@ function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
 const clean = (s: unknown, max: number) =>
   String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
 
-type Row = { slug: string; name: string; descr: string; cover: string; owner: string; status: string; visibility: string; category: string; created: number; updated: number };
+type Row = { slug: string; name: string; descr: string; cover: string; owner: string; status: string; visibility: string; category: string; categories: string; created: number; updated: number };
 type Plan = { id: number; community: string; name: string; period: string; price_micro: number; active: number };
 type Mem = { community: string; addr: string; role: string; state: string; plan: number; expires: number; joined: number };
 
@@ -126,7 +130,7 @@ const card = (c: Row, viewer: string) => {
   const plans = plansOf(c.slug);
   return {
     slug: c.slug, name: c.name, descr: c.descr, cover: c.cover, owner: ownerName(c.owner), members: countOf(c.slug),
-    visibility: c.visibility, category: c.category, role: roleOf(c, viewer), state: stateOf(c.slug, viewer), hidden: c.status !== "active", created: c.created,
+    visibility: c.visibility, category: c.category, categories: (c.categories || c.category).split(",").filter(Boolean), role: roleOf(c, viewer), state: stateOf(c.slug, viewer), hidden: c.status !== "active", created: c.created,
     paid: plans.some((p) => p.price_micro > 0),
     plans: plans.map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price_micro / 1e6 })),
   };
@@ -144,7 +148,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       const q = clean(url.searchParams.get("q"), 40).toLowerCase();
       let rows = db.prepare("SELECT * FROM communities WHERE status='active'").all() as Row[];
       const cat = clean(url.searchParams.get("category"), 30);
-      if (cat && isCategory(cat)) rows = rows.filter((c) => c.category === cat);
+      if (cat && isCategory(cat)) rows = rows.filter((c) => (c.categories || c.category).split(",").includes(cat));
       if (q) rows = rows.filter((c) => c.name.toLowerCase().includes(q) || c.descr.toLowerCase().includes(q) || c.slug.includes(q));
       const items = rows.map((c) => card(c, viewer)).sort((a, b) => (a.slug === MAIN ? -1 : b.slug === MAIN ? 1 : b.members - a.members || b.created - a.created)).slice(0, 100);
       return out(200, { ok: true, items });
@@ -198,7 +202,8 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (owned >= MAX_OWNED && !isAdm(viewer)) return bad("too_many_communities");
       if (limited("com_new:" + viewer, 5, DAY)) return bad("slow_down", 429);
       const now = Date.now();
-      db.prepare("INSERT INTO communities(slug,name,descr,owner,visibility,category,created,updated) VALUES(?,?,?,?,?,?,?,?)").run(slug, name, descr, viewer, vis(m.visibility, "open"), categoryOr(m.category), now, now);
+      const cats = categoriesOr(m.categories ?? m.category);
+      db.prepare("INSERT INTO communities(slug,name,descr,owner,visibility,category,categories,created,updated) VALUES(?,?,?,?,?,?,?,?,?)").run(slug, name, descr, viewer, vis(m.visibility, "open"), cats[0], cats.join(","), now, now);
       db.prepare("INSERT INTO community_members(community,addr,role,state,joined) VALUES(?,?,'owner','active',?)").run(slug, viewer, now);
       return out(200, { ok: true, community: card(getC(slug) as Row, viewer) });
     }
@@ -256,8 +261,8 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (name.length < 3) return bad("bad_name");
       if (cover && !/^https:\/\/[^\s"'<>]{3,300}$/.test(cover)) return bad("bad_cover");
       const visibility = slug === MAIN ? "open" : vis(m.visibility, c.visibility);
-      const category = m.category === undefined ? c.category : categoryOr(m.category);
-      db.prepare("UPDATE communities SET name=?, descr=?, cover=?, visibility=?, category=?, updated=? WHERE slug=?").run(name, descr, cover, visibility, category, Date.now(), slug);
+      const cats = m.categories === undefined && m.category === undefined ? (c.categories || c.category).split(",").filter(Boolean) : categoriesOr(m.categories ?? m.category);
+      db.prepare("UPDATE communities SET name=?, descr=?, cover=?, visibility=?, category=?, categories=?, updated=? WHERE slug=?").run(name, descr, cover, visibility, cats[0], cats.join(","), Date.now(), slug);
       return out(200, { ok: true, community: card(getC(slug) as Row, viewer) });
     }
 

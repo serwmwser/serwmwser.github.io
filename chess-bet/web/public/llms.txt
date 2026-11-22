@@ -24,6 +24,7 @@
 - [Cartoon chess](https://himeet.online/cartoon/): funny character pieces, bright boards and piece voices; free against the bot.
 - [3D cartoon chess board](https://himeet.online/cartoon-3d/): a 3D board with animated cartoon pieces; rotate and zoom, real chess rules, free to play in the browser.
 - [Language exchange](https://himeet.online/language-exchange/): free chat with message translation and calls, find people by language.
+- [Correspondence chess](https://himeet.online/correspondence-chess/): free games with 1 hour to 3 days per move, Telegram and push notifications, no stakes.
 - [Find friends](https://himeet.online/find-friends/): pick interests and languages in your profile, meet people from around the world.
 - [Chat with translation](https://himeet.online/chat-with-translation/): free messenger where every message can be translated in one tap, with voice notes, photos, PDFs, mail and calls.
 - [Android app](https://himeet.online/android/): download the HiMeet app (APK) and install it on Android.

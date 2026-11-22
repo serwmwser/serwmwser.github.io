@@ -73,7 +73,7 @@ export function makeBot(KEY: string) {
     else end(win(winner, "time"));
   }
 
-  /** Время «на раздумье»: 10–24 с (сложнее позиция — дольше); единственный ход — почти сразу; на малых часах быстрее */
+  /** Время «на раздумье»: 10–20 с (сложнее позиция — дольше); единственный ход — почти сразу; на малых часах быстрее */
   function humanDelay(): number {
     const s = st, c = s.chess;
     const moves = c.moves({ verbose: true });
@@ -84,7 +84,7 @@ export function makeBot(KEY: string) {
     else {
       const caps = moves.filter((m) => m.captured).length;
       const comp = 0.5 * Math.min(1, Math.max(0, (moves.length - 8) / 32)) + 0.3 * Math.min(1, caps / 4) + 0.2 * Math.random();
-      d = 10_000 + comp * 14_000;
+      d = 10_000 + comp * 10_000;
     }
     const left = s[c.turn()];
     return Math.min(d, Math.max(1500, left * 0.05));

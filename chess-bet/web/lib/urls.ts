@@ -21,6 +21,7 @@ export const ROUTES = {
   cartoon: `${BASE}/cartoon/`,
   cartoon3d: `${BASE}/cartoon-3d/`,
   exchange: `${BASE}/language-exchange/`,
+  correspondence: `${BASE}/correspondence-chess/`,
   android: `${BASE}/android/`,
   friends: `${BASE}/find-friends/`,
   translateChat: `${BASE}/chat-with-translation/`,

@@ -26,6 +26,7 @@ import Hero from "@/components/Hero";
 import HomeTiles from "@/components/HomeTiles";
 import Invite from "@/components/Invite";
 import Lobby from "@/components/Lobby";
+import CorrLobby from "@/components/CorrLobby";
 import OnlineGame from "@/components/OnlineGame";
 import { WaitingSplash } from "@/components/Splash";
 import Profile from "@/components/Profile";
@@ -68,6 +69,8 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("lobby");
   const [gamesOpen, setGamesOpen] = useState(false); // блок «Играть в шахматы»
   const [betsOpen, setBetsOpen] = useState(false); // блок «Ставки в USDC»
+  const [corrOpen, setCorrOpen] = useState(false); // блок «Партии по переписке»
+  const [corrId, setCorrId] = useState(""); // партия по переписке, открытая по ссылке из уведомления
   const [moreOpen, setMoreOpen] = useState(false); // блок «Ещё»
   const openGames = () => {
     setGamesOpen(true);
@@ -101,6 +104,8 @@ export default function Home() {
     if (new URLSearchParams(location.search).get("view") === "3d") { // ссылка /?tab=cartoon&view=3d включает 3D-доску
       try { const o = JSON.parse(localStorage.getItem("cb_cprefs") || "{}"); o.view3d = true; localStorage.setItem("cb_cprefs", JSON.stringify(o)); } catch { /* без хранилища */ }
     }
+    const cg = new URLSearchParams(location.search).get("corr"); // ссылка из уведомления: /?corr=ID открывает партию по переписке
+    if (cg && /^[0-9a-f]{10}$/.test(cg)) { setCorrId(cg); setCorrOpen(true); setGamesOpen(true); setTimeout(() => document.getElementById("corr")?.scrollIntoView({ behavior: "smooth", block: "start" }), 400); }
     const r = new URLSearchParams(location.search).get("room"); // ссылка в бесплатную комнату: /?room=ID
     if (r && /^[0-9a-f]{10}$/.test(r)) { setFriend({ room: r, color: "r", minutes: 60, n: 1 }); setTab("friend"); }
   }, []);
@@ -165,6 +170,10 @@ export default function Home() {
                 <Hero onBot={() => setTab("bot")} onEarn={() => setTab("earn")} />
                 <FriendCard onStart={(c, mins) => { setFriend((f) => ({ room: null, color: c, minutes: mins, n: (f?.n ?? 0) + 1 })); setTab("friend"); }} />
                 <MyFriendRooms onOpen={openRoom} />
+                <details id="corr" open={corrOpen} onToggle={(e) => setCorrOpen((e.currentTarget as HTMLDetailsElement).open)} className="rounded-2xl border border-black/10 dark:border-white/10 p-3">
+                  <summary className="cursor-pointer select-none font-bold">♟ {ru ? "Партии по переписке (ход раз в час или сутки)" : "Correspondence chess (a move per hour or day)"}</summary>
+                  <div className="pt-3">{corrOpen && <CorrLobby initialId={corrId} />}</div>
+                </details>
                 <details open={betsOpen} onToggle={(e) => setBetsOpen((e.currentTarget as HTMLDetailsElement).open)} className="rounded-2xl border border-black/10 dark:border-white/10 p-3">
                   <summary className="cursor-pointer select-none font-bold">💰 {ru ? "Ставки в USDC (только 18+)" : "USDC stakes (18+ only)"}</summary>
                   <p className="text-xs opacity-70 pt-2">{ru ? "Результат зависит от вашего мастерства, но выигрыш не гарантирован. Играйте только теми суммами, потерю которых можете себе позволить." : "The result depends on your skill, but winning is not guaranteed. Only play with amounts you can afford to lose."}</p>

@@ -28,6 +28,7 @@ export default function SiteFooter() {
     [ru ? "Шахматные задачи" : "Chess puzzles", `${BASE}/puzzles/`, false],
     [ru ? "Мультяшные шахматы" : "Cartoon chess", `${BASE}/cartoon/`, false],
     [ru ? "Языковой обмен" : "Language exchange", `${BASE}/language-exchange/`, false],
+    [ru ? "Шахматы по переписке" : "Correspondence chess", `${BASE}/correspondence-chess/`, false],
     [ru ? "Найти друзей" : "Find friends", `${BASE}/find-friends/`, false],
     [ru ? "Чат с переводом" : "Chat with translation", `${BASE}/chat-with-translation/`, false],
     [ru ? "Скачать для Android (APK)" : "Download for Android (APK)", `${BASE}/android/`, false],

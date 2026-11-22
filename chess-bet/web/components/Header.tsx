@@ -15,6 +15,8 @@ const allWallets = [
   createWallet("walletConnect"),
 ];
 // Внутри Telegram нет расширений кошельков, а ссылки вида metamask:// окно Telegram не открывает (ошибка ERR_UNKNOWN_URL_SCHEME): там только вход по почте
+/** Только встроенный вход (почта, Google, Apple, Telegram, passkey): подпись в приложении кошелька не нужна */
+export const emailWallets = [allWallets[0]];
 export const wallets = inTelegram() ? [inAppWallet({ auth: { options: ["email"] } })] : allWallets;
 
 export default function Header() {

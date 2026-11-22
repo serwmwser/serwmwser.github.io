@@ -28,7 +28,15 @@ CREATE TABLE IF NOT EXISTS comments(
   id INTEGER PRIMARY KEY AUTOINCREMENT, post INTEGER NOT NULL, addr TEXT NOT NULL, text TEXT NOT NULL,
   created INTEGER NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS comments_post ON comments(post, id);
+CREATE TABLE IF NOT EXISTS login_links(alt TEXT PRIMARY KEY, main TEXT NOT NULL, created INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS login_links_main ON login_links(main);
 `);
+
+/** Основной профиль для адреса входа: если этот способ входа привязан к другому профилю, возвращает его адрес */
+export function mainOf(addr: string): string {
+  const r = db.prepare("SELECT main FROM login_links WHERE alt=?").get(addr) as { main: string } | undefined;
+  return r ? r.main : addr;
+}
 
 try { db.exec("ALTER TABLE posts ADD COLUMN edited INTEGER NOT NULL DEFAULT 0"); } catch { /* колонка уже есть */ }
 try { db.exec("ALTER TABLE users ADD COLUMN langs TEXT NOT NULL DEFAULT ''"); } catch { /* колонка уже есть */ } // HiMeet langs
@@ -70,11 +78,12 @@ export function viewerOf(req: http.IncomingMessage): string {
   if (w) {
     const h0 = String(req.headers.authorization || "");
     if (!/^0x[0-9a-f]{40}$/.test(w) || !checkSession(w, h0.startsWith("Bearer ") ? h0.slice(7) : "")) return "";
-    const row = db.prepare("SELECT banned,name FROM users WHERE addr=?").get(w) as { banned: number; name: string } | undefined;
+    const mw = mainOf(w); // привязанный вход работает как основной профиль
+    const row = db.prepare("SELECT banned,name FROM users WHERE addr=?").get(mw) as { banned: number; name: string } | undefined;
     if (row?.banned) return "";
-    if (!row) ensureUser(w); else if (AUTO_RE.test(row.name)) seedFromLegacy(w);
-    touchSeen(w);
-    return w;
+    if (!row) ensureUser(mw); else if (AUTO_RE.test(row.name)) seedFromLegacy(mw);
+    touchSeen(mw);
+    return mw;
   }
   const h = String(req.headers.authorization || "");
   const t = h.startsWith("Bearer ") ? h.slice(7) : "";

@@ -24,6 +24,7 @@ import PostComposer, { uploadImage } from "@/components/PostComposer";
 import { useApp } from "@/lib/ctx";
 import { shortAddr } from "@/lib/config";
 import { absoluteUrl, profileUrl, ROUTES } from "@/lib/urls";
+import LinkLogin from "@/components/LinkLogin";
 import { modMe } from "@/lib/mod";
 import { errText, follow, getFeed, getPosts, getUser, INTERESTS, LANGS, saveProfile, useSocial, type SPost, type SUser } from "@/lib/social";
 
@@ -251,6 +252,8 @@ function Profile() {
         <a href={ROUTES.home + "?tab=earn"} className="btn btn-ghost !py-2">💰 {ru ? "Заработок" : "Earn"}</a>
         {isMod && <a href="/admin/" className="btn btn-ghost !py-2">⚙ {ru ? "Модерация" : "Moderation"}</a>}
       </nav>
+
+      {u.me && <LinkLogin />}
 
       {tab === "people" && u.me ? (
         <PeopleSearch me={s.me?.name} />

@@ -7,7 +7,7 @@ import path from "node:path";
 import type http from "node:http";
 import Database from "better-sqlite3";
 import { CATEGORIES, categoriesOr, isCategory, LANGUAGES, languageOr } from "./categories.js";
-import { pricingReady, publicPricing, REQUIRE_PAYMENT } from "./pricing.js";
+import { MAX_MEMBER_PRICE, MIN_MEMBER_PRICE, pricingReady, publicPricing, REQUIRE_PAYMENT } from "./pricing.js";
 
 const DB_FILE = process.env.SOCIAL_DB || "./data/social.db";
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
@@ -42,6 +42,8 @@ addCol("communities", "category", "TEXT NOT NULL DEFAULT 'other'");
 addCol("communities", "categories", "TEXT NOT NULL DEFAULT ''"); // до 3 категорий через запятую, первая главная
 addCol("communities", "language", "TEXT NOT NULL DEFAULT ''"); // язык сообщества; пусто = многоязычное
 addCol("community_plans", "trial_days", "INTEGER NOT NULL DEFAULT 0"); // пробный период тарифа, дней
+addCol("communities", "about", "TEXT NOT NULL DEFAULT ''"); // длинное описание для страницы-витрины
+addCol("communities", "media", "TEXT NOT NULL DEFAULT ''"); // галерея витрины: JSON-массив {type, url, thumb}, до 8 штук
 // Оплаченный тариф создателя сообществ (его записывает этап оплаты; пока записей нет, создавать может только администратор)
 db.exec("CREATE TABLE IF NOT EXISTS creator_subs(addr TEXT PRIMARY KEY, plan TEXT NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL)");
 /** Записать (или продлить) оплаченный тариф создателя: вызывается после подтверждения платежа */
@@ -71,7 +73,7 @@ db.prepare("UPDATE communities SET categories=?, category=? WHERE slug=? AND cat
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{2,29}$/;
 const RESERVED = new Set([MAIN, "admin", "api", "www", "u", "i", "c", "new", "create", "discovery", "community", "communities", "feed", "ads", "dating", "chess", "faq", "terms", "about", "profile", "me", "mod", "help", "support"]);
 const PERIODS = ["month", "quarter", "year", "lifetime"] as const; // бесплатный тариф: цена 0 (любой период)
-const MAX_OWNED = 3, MAX_PLANS = 6, MAX_PENDING = 10, MAX_PRICE_USDC = 10000;
+const MAX_OWNED = 3, MAX_PLANS = 6, MAX_PENDING = 10, MAX_PRICE_USDC = MAX_MEMBER_PRICE; // цена участия: бесплатно или от 1 до 1000 USDC
 const DAY = 86400000;
 
 const hits = new Map<string, number[]>();
@@ -86,7 +88,7 @@ function limited(key: string, max: number, ms: number): boolean {
 function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     let n = 0; const chunks: Buffer[] = [];
-    req.on("data", (c: Buffer) => { n += c.length; if (n > 4096) { reject(new Error("too_big")); req.destroy(); } else chunks.push(c); });
+    req.on("data", (c: Buffer) => { n += c.length; if (n > 16384) { reject(new Error("too_big")); req.destroy(); } else chunks.push(c); });
     req.on("end", () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}")); } catch { reject(new Error("bad_json")); } });
     req.on("error", reject);
   });
@@ -94,7 +96,7 @@ function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
 const clean = (s: unknown, max: number) =>
   String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
 
-type Row = { slug: string; name: string; descr: string; cover: string; owner: string; status: string; visibility: string; category: string; categories: string; language: string; created: number; updated: number };
+type Row = { slug: string; name: string; descr: string; about: string; media: string; cover: string; owner: string; status: string; visibility: string; category: string; categories: string; language: string; created: number; updated: number };
 type Plan = { id: number; community: string; name: string; period: string; price_micro: number; active: number; trial_days: number };
 type Mem = { community: string; addr: string; role: string; state: string; plan: number; expires: number; joined: number };
 
@@ -135,10 +137,50 @@ const recentOf = (slug: string): number => {
     ? (db.prepare("SELECT COUNT(*) AS n FROM users WHERE created>? AND banned=0").get(since) as { n: number }).n
     : (db.prepare("SELECT COUNT(*) AS n FROM community_members WHERE community=? AND state='active' AND joined>?").get(slug, since) as { n: number }).n;
 };
+/** Текст с абзацами: убираем служебные символы, оставляем переносы строк */
+const cleanText = (s: unknown, max: number) =>
+  String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E]/g, "").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
+type MediaItem = { type: "video" | "image"; url: string; thumb: string };
+/** Видео только с YouTube, Vimeo, RuTube: превращаем ссылку в безопасный адрес для встраивания */
+function parseVideo(u: string): { url: string; thumb: string } | null {
+  let x: URL; try { x = new URL(u); } catch { return null; }
+  if (x.protocol !== "https:") return null;
+  const h = x.hostname.replace(/^www\.|^m\./, "");
+  const seg = x.pathname.split("/").filter(Boolean);
+  let id = "";
+  if (h === "youtu.be") id = seg[0] || "";
+  else if (h === "youtube.com" || h === "youtube-nocookie.com") id = x.pathname === "/watch" ? x.searchParams.get("v") || "" : seg[0] === "shorts" || seg[0] === "embed" ? seg[1] || "" : "";
+  if ((h === "youtu.be" || h === "youtube.com" || h === "youtube-nocookie.com") && /^[A-Za-z0-9_-]{6,15}$/.test(id))
+    return { url: "https://www.youtube-nocookie.com/embed/" + id, thumb: "https://img.youtube.com/vi/" + id + "/hqdefault.jpg" };
+  if (h === "vimeo.com" || h === "player.vimeo.com") {
+    const v = seg.filter((t) => /^\d{5,12}$/.test(t)).pop() || "";
+    if (v) return { url: "https://player.vimeo.com/video/" + v, thumb: "" };
+  }
+  if (h === "rutube.ru") {
+    const v = seg.find((t) => /^[a-f0-9]{32}$/.test(t)) || "";
+    if (v) return { url: "https://rutube.ru/play/embed/" + v, thumb: "" };
+  }
+  return null;
+}
+const IMG_RE = /^(https:\/\/[^\s"'<>]{3,300}|\/media\/[A-Za-z0-9._-]{3,80})$/; // ссылка или файл, загруженный на наш сервер (/api/upload → /media/…)
+/** Проверка галереи, присланной владельцем: до 8 элементов; null, если что-то не так */
+function normMedia(v: unknown): MediaItem[] | null {
+  if (!Array.isArray(v) || v.length > 8) return null;
+  const out: MediaItem[] = [];
+  for (const it of v) {
+    const o = (it || {}) as Record<string, unknown>;
+    const url = String(o.url ?? "").trim();
+    if (o.type === "video") { const pv = parseVideo(url); if (!pv) return null; out.push({ type: "video", url: pv.url, thumb: pv.thumb }); }
+    else if (o.type === "image") { if (!IMG_RE.test(url)) return null; out.push({ type: "image", url, thumb: "" }); }
+    else return null;
+  }
+  return out;
+}
+const parseMedia = (raw: string): MediaItem[] => { try { const a = JSON.parse(raw || "[]"); return Array.isArray(a) ? (a as MediaItem[]) : []; } catch { return []; } };
 const card = (c: Row, viewer: string) => {
   const plans = plansOf(c.slug);
   return {
-    slug: c.slug, name: c.name, descr: c.descr, cover: c.cover, owner: ownerName(c.owner), members: countOf(c.slug),
+    slug: c.slug, name: c.name, descr: c.descr, about: c.about, media: parseMedia(c.media), cover: c.cover, owner: ownerName(c.owner), members: countOf(c.slug),
     visibility: c.visibility, category: c.category, categories: (c.categories || c.category).split(",").filter(Boolean), role: roleOf(c, viewer), state: stateOf(c.slug, viewer), hidden: c.status !== "active", created: c.created,
     paid: plans.some((p) => p.price_micro > 0), trial: plans.some((p) => p.trial_days > 0), language: c.language, recent: recentOf(c.slug),
     plans: plans.map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price_micro / 1e6, trial: p.trial_days })),
@@ -271,12 +313,15 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       const name = m.name === undefined ? c.name : clean(m.name, 40);
       const descr = m.descr === undefined ? c.descr : clean(m.descr, 300);
       const cover = m.cover === undefined ? c.cover : String(m.cover || "").trim();
+      const about = m.about === undefined ? c.about : cleanText(m.about, 4000);
+      let media = c.media;
+      if (m.media !== undefined) { const mm = normMedia(m.media); if (!mm) return bad("bad_media"); media = JSON.stringify(mm); }
       if (name.length < 3) return bad("bad_name");
-      if (cover && !/^https:\/\/[^\s"'<>]{3,300}$/.test(cover)) return bad("bad_cover");
+      if (cover && !IMG_RE.test(cover)) return bad("bad_cover");
       const visibility = slug === MAIN ? "open" : vis(m.visibility, c.visibility);
       const cats = m.categories === undefined && m.category === undefined ? (c.categories || c.category).split(",").filter(Boolean) : categoriesOr(m.categories ?? m.category);
       const language = m.language === undefined ? c.language : languageOr(m.language);
-      db.prepare("UPDATE communities SET name=?, descr=?, cover=?, visibility=?, category=?, categories=?, language=?, updated=? WHERE slug=?").run(name, descr, cover, visibility, cats[0], cats.join(","), language, Date.now(), slug);
+      db.prepare("UPDATE communities SET name=?, descr=?, about=?, media=?, cover=?, visibility=?, category=?, categories=?, language=?, updated=? WHERE slug=?").run(name, descr, about, media, cover, visibility, cats[0], cats.join(","), language, Date.now(), slug);
       return out(200, { ok: true, community: card(getC(slug) as Row, viewer) });
     }
 
@@ -287,7 +332,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       const price = Number(m.price);
       if (name.length < 2) return bad("bad_name");
       if (!(PERIODS as readonly string[]).includes(period)) return bad("bad_period");
-      if (!Number.isFinite(price) || price < 0 || price > MAX_PRICE_USDC) return bad("bad_price");
+      if (!Number.isFinite(price) || price < 0 || (price > 0 && price < MIN_MEMBER_PRICE) || price > MAX_PRICE_USDC) return bad("bad_price");
       if (plansOf(slug).length >= MAX_PLANS) return bad("too_many_plans");
       const trial = Math.max(0, Math.min(30, Math.floor(Number(m.trial) || 0))); // пробный период, 0–30 дней
       db.prepare("INSERT INTO community_plans(community,name,period,price_micro,trial_days,created) VALUES(?,?,?,?,?,?)").run(slug, name, period, Math.round(price * 1e6), trial, Date.now());

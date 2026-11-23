@@ -1,6 +1,6 @@
 "use client";
-// Каталог сообществ: поиск, категории, фильтр (цена, тип, сортировка), карточки. «HiMeet» всегда первым.
-import { useEffect, useMemo, useState } from "react";
+// Каталог сообществ: поиск, категории, фильтр как на Skool (цена, тип, сортировка, язык), карточки. «HiMeet» всегда первым.
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import SiteNav from "@/components/SiteNav";
@@ -9,12 +9,24 @@ import CommunityCard from "@/components/CommunityCard";
 import { useApp } from "@/lib/ctx";
 import { useSocial } from "@/lib/social";
 import { BASE } from "@/lib/urls";
-import { communityUrl, listCategories, listCommunities, MAIN_SLUG, myCommunities, type Category, type Community } from "@/lib/communities";
+import { communityUrl, listCommunities, listFilters, MAIN_SLUG, myCommunities, type Category, type Community, type Language } from "@/lib/communities";
 
-type Price = "all" | "free" | "paid";
-type Kind = "all" | "open" | "closed";
-type Sort = "top" | "new";
+type Price = "" | "free" | "paid" | "trial";
+type Kind = "" | "closed" | "open";
+type Sort = "trending" | "top";
 const CHIPS_SHOWN = 12;
+
+/** Кружок-переключатель: повторное нажатие на выбранный вариант снимает выбор */
+function Radio({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" role="radio" aria-checked={on} onClick={onClick} className="flex items-center gap-2 py-1.5 text-left text-sm">
+      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-blue-500" : "border-black/30 dark:border-white/40"}`}>
+        {on && <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />}
+      </span>
+      {children}
+    </button>
+  );
+}
 
 export default function CommunitiesPage() {
   const { lang } = useApp();
@@ -23,44 +35,57 @@ export default function CommunitiesPage() {
 
   const [all, setAll] = useState<Community[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
+  const [langs, setLangs] = useState<Language[]>([]);
   const [mine, setMine] = useState<Community[]>([]);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
-  const [price, setPrice] = useState<Price>("all");
-  const [kind, setKind] = useState<Kind>("all");
-  const [sort, setSort] = useState<Sort>("top");
+  const [price, setPrice] = useState<Price>("");
+  const [kind, setKind] = useState<Kind>("");
+  const [sort, setSort] = useState<Sort>("trending");
+  const [lg, setLg] = useState(""); // выбранный язык каталога; пусто = все языки
   const [filterOpen, setFilterOpen] = useState(false);
   const [moreCats, setMoreCats] = useState(false);
   const [failed, setFailed] = useState(false);
+  const fRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     listCommunities(token || "").then(setAll).catch(() => setFailed(true));
-    listCategories().then(setCats).catch(() => { /* без категорий каталог тоже работает */ });
+    listFilters().then((f) => { setCats(f.categories); setLangs(f.languages); }).catch(() => { /* без категорий каталог тоже работает */ });
   }, [token]);
   useEffect(() => {
     if (!token) { setMine([]); return; }
     myCommunities(token).then(setMine).catch(() => setMine([]));
   }, [token]);
+  // панель фильтра закрывается нажатием вне её и клавишей Esc
+  useEffect(() => {
+    if (!filterOpen) return;
+    const down = (e: MouseEvent | TouchEvent) => { if (fRef.current && !fRef.current.contains(e.target as Node)) setFilterOpen(false); };
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setFilterOpen(false); };
+    document.addEventListener("mousedown", down); document.addEventListener("touchstart", down); document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("mousedown", down); document.removeEventListener("touchstart", down); document.removeEventListener("keydown", key); };
+  }, [filterOpen]);
 
   const catMap = useMemo(() => Object.fromEntries(cats.map((c) => [c.slug, c])) as Record<string, Category>, [cats]);
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    let list = (all || []).filter((c) => {
+    const list = (all || []).filter((c) => {
       if (cat && !c.categories.includes(cat)) return false;
       if (price === "free" && c.paid) return false;
       if (price === "paid" && !c.paid) return false;
-      if (kind !== "all" && c.visibility !== kind) return false;
+      if (price === "trial" && !c.trial) return false;
+      if (kind && c.visibility !== kind) return false;
+      if (lg && c.language && c.language !== lg) return false; // многоязычные (без языка) видны при любом выборе
       if (s && !(c.name.toLowerCase().includes(s) || c.descr.toLowerCase().includes(s) || c.slug.includes(s))) return false;
       return true;
     });
-    list = [...list].sort((a, b) => (a.slug === MAIN_SLUG ? -1 : b.slug === MAIN_SLUG ? 1 : sort === "new" ? b.created - a.created : b.members - a.members || b.created - a.created));
-    return list;
-  }, [all, q, cat, price, kind, sort]);
+    return [...list].sort((a, b) => (a.slug === MAIN_SLUG ? -1 : b.slug === MAIN_SLUG ? 1 : sort === "trending" ? b.recent - a.recent || b.members - a.members : b.members - a.members || b.created - a.created));
+  }, [all, q, cat, price, kind, lg, sort]);
 
   const chipCats = moreCats ? cats : cats.slice(0, CHIPS_SHOWN);
-  const filtersOn = price !== "all" || kind !== "all" || sort !== "top";
-  const Opt = ({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) => (
+  const filtersOn = (price ? 1 : 0) + (kind ? 1 : 0) + (lg ? 1 : 0) + (sort !== "trending" ? 1 : 0);
+  const reset = () => { setPrice(""); setKind(""); setLg(""); setSort("trending"); };
+  const Chip = ({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) => (
     <button type="button" className={`chip ${on ? "chip-on" : ""}`} onClick={onClick}>{children}</button>
   );
 
@@ -96,39 +121,46 @@ export default function CommunitiesPage() {
         )}
 
         <section aria-label={ru ? "Категории" : "Categories"} className="flex flex-wrap items-center justify-center gap-2">
-          <Opt on={cat === ""} onClick={() => setCat("")}>🔥 {ru ? "Все" : "All"}</Opt>
-          {chipCats.map((c) => <Opt key={c.slug} on={cat === c.slug} onClick={() => setCat(cat === c.slug ? "" : c.slug)}>{c.icon} {ru ? c.ru : c.en}</Opt>)}
-          {cats.length > CHIPS_SHOWN && <Opt on={false} onClick={() => setMoreCats((v) => !v)}>{moreCats ? (ru ? "Меньше…" : "Less…") : (ru ? "Ещё…" : "More…")}</Opt>}
-          <Opt on={filterOpen || filtersOn} onClick={() => setFilterOpen((v) => !v)}>⚙ {ru ? "Фильтр" : "Filter"}</Opt>
-        </section>
+          <Chip on={cat === ""} onClick={() => setCat("")}>🔥 {ru ? "Все" : "All"}</Chip>
+          {chipCats.map((c) => <Chip key={c.slug} on={cat === c.slug} onClick={() => setCat(cat === c.slug ? "" : c.slug)}>{c.icon} {ru ? c.ru : c.en}</Chip>)}
+          {cats.length > CHIPS_SHOWN && <Chip on={false} onClick={() => setMoreCats((v) => !v)}>{moreCats ? (ru ? "Меньше…" : "Less…") : (ru ? "Ещё…" : "More…")}</Chip>}
 
-        {filterOpen && (
-          <section className="card mx-auto max-w-2xl grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <div className="text-sm font-bold">{ru ? "Цена" : "Price"}</div>
-              <div className="flex flex-wrap gap-2">
-                <Opt on={price === "all"} onClick={() => setPrice("all")}>{ru ? "Любая" : "Any"}</Opt>
-                <Opt on={price === "free"} onClick={() => setPrice("free")}>{ru ? "Бесплатные" : "Free"}</Opt>
-                <Opt on={price === "paid"} onClick={() => setPrice("paid")}>{ru ? "Платные" : "Paid"}</Opt>
+          <div ref={fRef} className="relative">
+            <button type="button" className={`chip ${filtersOn || filterOpen ? "chip-on" : ""}`} aria-expanded={filterOpen} onClick={() => setFilterOpen((v) => !v)}>
+              ⚙ {ru ? "Фильтр" : "Filter"}{filtersOn ? ` · ${filtersOn}` : ""}
+            </button>
+            {filterOpen && (
+              <div role="dialog" aria-label={ru ? "Фильтр" : "Filter"} className="card absolute right-0 top-full mt-2 z-30 w-[min(92vw,26rem)] !p-4 shadow-xl text-left space-y-4">
+                <div className="grid grid-cols-3 gap-3" role="radiogroup">
+                  <div>
+                    <div className="font-bold mb-1">{ru ? "Цена" : "Price"}</div>
+                    <Radio on={price === "free"} onClick={() => setPrice(price === "free" ? "" : "free")}>{ru ? "Бесплатные" : "Free"}</Radio>
+                    <Radio on={price === "paid"} onClick={() => setPrice(price === "paid" ? "" : "paid")}>{ru ? "Платные" : "Paid"}</Radio>
+                    <Radio on={price === "trial"} onClick={() => setPrice(price === "trial" ? "" : "trial")}>{ru ? "Пробный период" : "Free trial"}</Radio>
+                  </div>
+                  <div>
+                    <div className="font-bold mb-1">{ru ? "Тип" : "Type"}</div>
+                    <Radio on={kind === "closed"} onClick={() => setKind(kind === "closed" ? "" : "closed")}>{ru ? "Закрытые" : "Private"}</Radio>
+                    <Radio on={kind === "open"} onClick={() => setKind(kind === "open" ? "" : "open")}>{ru ? "Открытые" : "Public"}</Radio>
+                  </div>
+                  <div>
+                    <div className="font-bold mb-1">{ru ? "Сортировка" : "Sort"}</div>
+                    <Radio on={sort === "trending"} onClick={() => setSort("trending")}>{ru ? "Популярные сейчас" : "Trending"}</Radio>
+                    <Radio on={sort === "top"} onClick={() => setSort("top")}>{ru ? "Лучшие" : "Top"}</Radio>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 text-sm font-bold" htmlFor="lg">{ru ? "Язык" : "Language"}</label>
+                  <select id="lg" value={lg} onChange={(e) => setLg(e.target.value)} className="rounded-xl border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 text-sm">
+                    <option value="">{ru ? "Все языки" : "All languages"}</option>
+                    {langs.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+                  </select>
+                </div>
+                {filtersOn > 0 && <button type="button" className="text-sm underline opacity-80" onClick={reset}>{ru ? "Сбросить фильтр" : "Reset filter"}</button>}
               </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-bold">{ru ? "Тип" : "Type"}</div>
-              <div className="flex flex-wrap gap-2">
-                <Opt on={kind === "all"} onClick={() => setKind("all")}>{ru ? "Любой" : "Any"}</Opt>
-                <Opt on={kind === "open"} onClick={() => setKind("open")}>{ru ? "Открытые" : "Public"}</Opt>
-                <Opt on={kind === "closed"} onClick={() => setKind("closed")}>{ru ? "Закрытые" : "Private"}</Opt>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-bold">{ru ? "Сортировка" : "Sort"}</div>
-              <div className="flex flex-wrap gap-2">
-                <Opt on={sort === "top"} onClick={() => setSort("top")}>{ru ? "Популярные" : "Top"}</Opt>
-                <Opt on={sort === "new"} onClick={() => setSort("new")}>{ru ? "Новые" : "New"}</Opt>
-              </div>
-            </div>
-          </section>
-        )}
+            )}
+          </div>
+        </section>
 
         {failed && <div className="card text-center text-sm">{ru ? "Не удалось загрузить сообщества. Попробуйте обновить страницу." : "Could not load communities. Try refreshing the page."}</div>}
         {!failed && all === null && <div className="text-center text-sm opacity-70">{ru ? "Загрузка…" : "Loading…"}</div>}

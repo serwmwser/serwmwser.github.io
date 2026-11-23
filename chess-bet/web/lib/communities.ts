@@ -4,14 +4,18 @@ import { API_URL } from "./config";
 import { BASE } from "./urls";
 
 export type Category = { slug: string; ru: string; en: string; icon: string };
+export type Language = { code: string; name: string };
 export type PlanPeriod = "month" | "quarter" | "year" | "lifetime";
-export type CommunityPlan = { id: number; name: string; period: PlanPeriod; price: number };
+export type CommunityPlan = { id: number; name: string; period: PlanPeriod; price: number; trial: number };
 export type Community = {
   slug: string; name: string; descr: string; cover: string; owner: string | null; members: number;
   visibility: "open" | "closed"; category: string; categories: string[];
   role: string;   // "owner" | "mod" | "member" | "" (не участник)
   state: string;  // "member" | "pending" (заявка отправлена) | "expired" (срок вышел) | ""
   hidden: boolean; created: number; paid: boolean; plans: CommunityPlan[];
+  trial: boolean;     // есть тариф с пробным периодом
+  language: string;   // код языка; пусто = многоязычное
+  recent: number;     // вступило за последние 7 дней
 };
 export type CreatorPlanInfo = {
   id: "start" | "pro"; name: [string, string]; feePct: number | null; customUrl: boolean; affiliates: boolean;
@@ -54,16 +58,19 @@ export const getCommunity = (token: string, slug: string) =>
   call<{ community: Community }>(`/api/communities/get${qs({ slug })}`, token).then((j) => j.community);
 export const myCommunities = (token: string) => call<{ items: Community[] }>("/api/communities/mine", token).then((j) => j.items);
 export const listCategories = () => call<{ items: Category[] }>("/api/communities/categories", "").then((j) => j.items);
+/** Категории и языки для фильтра каталога */
+export const listFilters = () =>
+  call<{ items: Category[]; languages: Language[] }>("/api/communities/categories", "").then((j) => ({ categories: j.items, languages: j.languages || [] }));
 export const getPricing = (token: string) => call<Pricing>("/api/communities/pricing", token);
 
 export const joinCommunity = (token: string, slug: string, plan?: number) =>
   call<{ community: Community }>("/api/communities/join", token, { slug, plan: plan || 0 }).then((j) => j.community);
 export const leaveCommunity = (token: string, slug: string) => call<object>("/api/communities/leave", token, { slug });
-export const createCommunity = (token: string, d: { slug: string; name: string; descr: string; visibility: "open" | "closed"; categories: string[] }) =>
+export const createCommunity = (token: string, d: { slug: string; name: string; descr: string; visibility: "open" | "closed"; categories: string[]; language?: string }) =>
   call<{ community: Community }>("/api/communities/create", token, d).then((j) => j.community);
-export const updateCommunity = (token: string, slug: string, d: { name?: string; descr?: string; cover?: string; visibility?: "open" | "closed"; categories?: string[] }) =>
+export const updateCommunity = (token: string, slug: string, d: { name?: string; descr?: string; cover?: string; visibility?: "open" | "closed"; categories?: string[]; language?: string }) =>
   call<{ community: Community }>("/api/communities/update", token, { slug, ...d }).then((j) => j.community);
-export const addPlan = (token: string, slug: string, d: { name: string; period: PlanPeriod; price: number }) =>
+export const addPlan = (token: string, slug: string, d: { name: string; period: PlanPeriod; price: number; trial?: number }) =>
   call<{ community: Community }>("/api/communities/plan_add", token, { slug, ...d }).then((j) => j.community);
 export const removePlan = (token: string, slug: string, id: number) =>
   call<{ community: Community }>("/api/communities/plan_remove", token, { slug, id }).then((j) => j.community);
@@ -77,6 +84,8 @@ export function periodText(p: PlanPeriod, ru: boolean): string {
   const t: Record<PlanPeriod, [string, string]> = { month: ["в месяц", "/ month"], quarter: ["за 3 месяца", "/ 3 months"], year: ["в год", "/ year"], lifetime: ["навсегда", "one-time"] };
   return t[p][ru ? 0 : 1];
 }
+/** Подпись пробного периода: «7 дней бесплатно» */
+export const trialText = (days: number, ru: boolean) => (ru ? `${days} дн. бесплатно` : `${days}-day free trial`);
 /** Цена в USDC или «Бесплатно» */
 export const priceText = (price: number, ru: boolean) => (price > 0 ? `${price} USDC` : ru ? "Бесплатно" : "Free");
 /** Самый дешёвый платный тариф для карточки: «от 10 USDC» */

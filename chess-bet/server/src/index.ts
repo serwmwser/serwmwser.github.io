@@ -33,6 +33,7 @@ import { handleFunnel } from "./funnel.js";
 import { handleLinks } from "./links.js";
 import { handleCorr } from "./corr.js";
 import { handleCommunities } from "./communities.js";
+import { handlePay, setChainVerifier, setReferrerResolver } from "./payments.js";
 
 const SITE_URL = process.env.SITE_URL || "https://himeet.online";
 
@@ -393,7 +394,7 @@ setRefSource(async (addr) => {
 
 // Проверка оплаты объявлений: в транзакции есть перевод USDC от плательщика на наш адрес не меньше нужной суммы, не старше часа
 const TRANSFER_TOPIC = ethers.id("Transfer(address,address,uint256)");
-setPayVerifier(async (tx, from, to, token, min) => {
+const verifyUsdc = async (tx: string, from: string, to: string, token: string, min: number): Promise<boolean> => {
   const rc = await provider.getTransactionReceipt(tx);
   if (!rc || rc.status !== 1) return false;
   const blk = await provider.getBlock(rc.blockNumber);
@@ -401,6 +402,15 @@ setPayVerifier(async (tx, from, to, token, min) => {
   const addrOf = (t: string) => ("0x" + t.slice(26)).toLowerCase();
   return rc.logs.some((l) => l.address.toLowerCase() === token && l.topics.length === 3 && l.topics[0] === TRANSFER_TOPIC
     && addrOf(l.topics[1]) === from.toLowerCase() && addrOf(l.topics[2]) === to.toLowerCase() && BigInt(l.data) >= BigInt(min));
+};
+setPayVerifier(verifyUsdc);
+setChainVerifier(verifyUsdc);
+// кто пригласил человека на HiMeet: ожидающая запись у нас или реферер, уже закреплённый в контракте
+setReferrerResolver(async (addr) => {
+  const pend = refPending.get(addr);
+  if (pend) return pend;
+  const r = String(await escrow.referrerOf(addr));
+  return r === ethers.ZeroAddress ? "" : r;
 });
 
 let queue: Promise<unknown> = Promise.resolve();
@@ -568,6 +578,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname.startsWith("/api/calls/")) { handleCalls(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/links/")) { handleLinks(req, res, url).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/communities" || url.pathname.startsWith("/api/communities/")) { handleCommunities(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
+  if (url.pathname.startsWith("/api/pay/")) { handlePay(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/corr/")) { handleCorr(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/funnel" || url.pathname === "/api/funnel/summary") { handleFunnel(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/refs/")) { handleRefs(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }

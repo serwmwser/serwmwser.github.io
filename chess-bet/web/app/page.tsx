@@ -244,7 +244,9 @@ export default function Home() {
       if (q.get("landing") === "1") sessionStorage.removeItem("hm_gate"); // /?landing=1 снова показывает лендинг
       else entered = sessionStorage.getItem("hm_gate") === "1";
     } catch { /* без хранилища: ворота показываются при каждом открытии */ }
-    if (q.get("landing") !== "1" && (location.search || location.hash || entered)) setMode("app");
+    // Telegram Mini App добавляет к адресу служебный хеш #tgWebApp…: он не считается ссылкой-приглашением, ворота показываются и там
+    const realHash = !!location.hash && !/tgWebApp(Data|Version|Platform|ThemeParams|StartParam)=/.test(location.hash);
+    if (q.get("landing") !== "1" && (location.search || realHash || entered)) setMode("app");
   }, []);
   const enter = () => {
     try { sessionStorage.setItem("hm_gate", "1"); } catch { /* без хранилища */ }

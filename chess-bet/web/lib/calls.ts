@@ -169,6 +169,9 @@ async function onSignal(id: string, data: { type?: string; sdp?: string; candida
 }
 
 // ---------- соединение с сервером ----------
+/** Служебные ответы сервера при подключении (нет профиля, вход не завершён, сбой сигнала): показывать их тостом не нужно */
+const SILENT_ERRORS = new Set(["auth", "forbidden", "bad_state", "no_call", "bad_signal"]);
+
 function connect() {
   if (!wantOn || !token || (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING))) return;
   const s = new WebSocket(CALL_URL);
@@ -197,6 +200,7 @@ function connect() {
       case "ended": finish(String(m.reason), Number(m.secs) || 0); break;
       case "error": {
         const e = String(m.e);
+        if (SILENT_ERRORS.has(e)) break;
         set({ error: e });
         if (e === "busy" || e === "offline" || e === "not_found" || e === "slow_down" || e === "busy_me" || e === "overloaded") { cleanup(); set({ status: "idle", peer: null, id: "" }); }
         break;

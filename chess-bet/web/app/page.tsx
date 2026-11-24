@@ -237,12 +237,14 @@ function AppHome() {
 export default function Home() {
   const account = useActiveAccount();
   const [mode, setMode] = useState<"landing" | "app">("landing");
+  const force = useRef(false); // /?landing=1: показать лендинг даже вошедшему (для просмотра)
   useEffect(() => {
+    if (new URLSearchParams(location.search).get("landing") === "1") { force.current = true; return; }
     let returning = false;
     try { returning = Object.keys(localStorage).some((k) => k.startsWith("thirdweb:")); } catch { /* без хранилища */ }
     if (location.search || location.hash || returning) setMode("app"); // ссылки-приглашения, вход уже выполнялся
   }, []);
-  useEffect(() => { if (account) setMode("app"); }, [account]);
+  useEffect(() => { if (account && !force.current) setMode("app"); }, [account]);
   if (mode === "landing") return <Landing onStart={() => { setMode("app"); window.scrollTo(0, 0); }} />;
   return <AppHome />;
 }

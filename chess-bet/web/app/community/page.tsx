@@ -40,7 +40,8 @@ function View() {
     if (c) document.title = `${c.name} | HiMeet`;
   }, [c]);
 
-  const owner = !!c && c.role === "owner" && c.slug !== MAIN_SLUG;
+  const owner = !!c && c.role === "owner"; // владелец сообщества или администратор (для главного сообщества HiMeet)
+  const isMain = !!c && c.slug === MAIN_SLUG;
 
   return (
     <>
@@ -59,7 +60,7 @@ function View() {
 
         {c && (
           <>
-            {owner && <TrialBanner sub={c.sub} onPaid={load} />}
+            {owner && !isMain && <TrialBanner sub={c.sub} onPaid={load} />}
             <header>
               <h1 className="text-2xl sm:text-3xl font-extrabold break-words">{c.name}</h1>
             </header>
@@ -68,7 +69,7 @@ function View() {
             {owner && (
               <div className="space-y-6">
                 <CommunityManage c={c} onChange={setC} />
-                <CommunityPartners c={c} />
+                {!isMain && <CommunityPartners c={c} />}
               </div>
             )}
           </>

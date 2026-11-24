@@ -39,6 +39,14 @@ export default function NewCommunityPage() {
   const load = () => { getPricing(token || "").then(setPr).catch(() => setPr(null)); };
   useEffect(load, [token]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!slugTouched) setSlug(toSlug(name)); }, [name, slugTouched]);
+  // кнопка «Создать клуб» внутри презентации прокручивает к форме
+  useEffect(() => {
+    const h = (e: MessageEvent) => {
+      if (e.origin === window.location.origin && e.data === "hm-create") document.getElementById("new-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener("message", h);
+    return () => window.removeEventListener("message", h);
+  }, []);
 
   const slugOk = useMemo(() => /^[a-z0-9][a-z0-9-]{2,29}$/.test(slug), [slug]);
   const formOk = name.trim().length >= 3 && slugOk && sel.length > 0;
@@ -74,6 +82,17 @@ export default function NewCommunityPage() {
           <p className="text-sm sm:text-base opacity-85">{ru ? "Открытое или закрытое, бесплатное или платное: цену участия (от 1 до 1000 USDC) вы задаёте сами." : "Open or private, free or paid: you set the membership price (1 to 1000 USDC) yourself."}</p>
         </header>
 
+        <section className="space-y-2" aria-label={ru ? "Презентация для создателей" : "Presentation for creators"}>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-bold">{ru ? "Почему стоит открыть клуб на HiMeet" : "Why open a club on HiMeet"}</h2>
+            <a href={`${BASE}/creators.html?lang=${ru ? "ru" : "en"}`} target="_blank" rel="noopener" className="btn btn-ghost !py-1.5 text-sm ms-auto">{ru ? "Открыть на весь экран ↗" : "Open full screen ↗"}</a>
+          </div>
+          <iframe
+            src={`${BASE}/creators.html?lang=${ru ? "ru" : "en"}`} title={ru ? "Презентация для создателей" : "Presentation for creators"} loading="lazy"
+            className="h-[75vh] min-h-[480px] w-full rounded-2xl border border-black/10 dark:border-white/10"
+          />
+        </section>
+
         {pr && pr.ready && (
           <section className="space-y-3" aria-label={ru ? "Тарифы создателя" : "Creator plans"}>
             <div className="flex flex-wrap items-center gap-2">
@@ -104,6 +123,7 @@ export default function NewCommunityPage() {
         )}
         {pr && !pr.ready && <p className="card text-sm opacity-80">{ru ? "Создание сообществ откроется совсем скоро." : "Community creation opens very soon."}</p>}
 
+        <div id="new-form" className="scroll-mt-4" />
         {!token ? (
           <LoginPrompt text={ru ? "Войдите, чтобы создать сообщество." : "Sign in to create a community."} />
         ) : expiredSub ? (

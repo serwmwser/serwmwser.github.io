@@ -233,18 +233,24 @@ function AppHome() {
   );
 }
 
-/** Первая страница: посетителю без входа и без параметров в адресе показываем лендинг, остальным сразу приложение */
+/** Первая страница: лендинг работает как ворота. Он виден, пока посетитель сам не нажмёт «Начать» или «Войти»;
+ *  после нажатия в этой вкладке сразу открывается приложение. Ссылки с параметрами (приглашения, игры) ведут в приложение сразу. */
 export default function Home() {
-  const account = useActiveAccount();
   const [mode, setMode] = useState<"landing" | "app">("landing");
-  const force = useRef(false); // /?landing=1: показать лендинг даже вошедшему (для просмотра)
   useEffect(() => {
-    if (new URLSearchParams(location.search).get("landing") === "1") { force.current = true; return; }
-    let returning = false;
-    try { returning = Object.keys(localStorage).some((k) => k.startsWith("thirdweb:")); } catch { /* без хранилища */ }
-    if (location.search || location.hash || returning) setMode("app"); // ссылки-приглашения, вход уже выполнялся
+    const q = new URLSearchParams(location.search);
+    let entered = false;
+    try {
+      if (q.get("landing") === "1") sessionStorage.removeItem("hm_gate"); // /?landing=1 снова показывает лендинг
+      else entered = sessionStorage.getItem("hm_gate") === "1";
+    } catch { /* без хранилища: ворота показываются при каждом открытии */ }
+    if (q.get("landing") !== "1" && (location.search || location.hash || entered)) setMode("app");
   }, []);
-  useEffect(() => { if (account && !force.current) setMode("app"); }, [account]);
-  if (mode === "landing") return <Landing onStart={() => { setMode("app"); window.scrollTo(0, 0); }} />;
+  const enter = () => {
+    try { sessionStorage.setItem("hm_gate", "1"); } catch { /* без хранилища */ }
+    setMode("app");
+    window.scrollTo(0, 0);
+  };
+  if (mode === "landing") return <Landing onStart={enter} />;
   return <AppHome />;
 }

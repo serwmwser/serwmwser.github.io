@@ -96,3 +96,8 @@ export function publicPricing() {
     })),
   };
 }
+
+/** Бесплатный период создателя: первые FOUNDER_SLOTS создателей получают FOUNDER_DAYS дней, остальные TRIAL_DAYS; комиссия с участников удерживается всё это время */
+export const FOUNDER_SLOTS = 50;
+export const FOUNDER_DAYS = 90;
+export const TRIAL_DAYS = 14;

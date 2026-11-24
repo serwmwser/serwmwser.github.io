@@ -16,6 +16,7 @@
 
 - [Home](https://himeet.online/): start page with all sections.
 - [Classifieds](https://himeet.online/ads/): international classifieds with translation of ads and chat, by country and city.
+- [Communities](https://himeet.online/communities/): catalog of open and private communities; creators set a membership price of 1 to 1000 USDC and can start their own community (https://himeet.online/communities/new/), with a free trial period.
 - [Dating](https://himeet.online/dating/): free 18+ dating: profiles with 3 photos, filters, likes and matches.
 - [Feed](https://himeet.online/feed/): posts and photos from the Rook Club community.
 - [Crypto chess game](https://himeet.online/crypto/): how USDC stakes on Polygon work, who holds the money, fees and risks.

@@ -7,7 +7,7 @@ import path from "node:path";
 import type http from "node:http";
 import Database from "better-sqlite3";
 import { CATEGORIES, categoriesOr, isCategory, LANGUAGES, languageOr } from "./categories.js";
-import { MAX_MEMBER_PRICE, MIN_MEMBER_PRICE, pricingReady, publicPricing, REQUIRE_PAYMENT } from "./pricing.js";
+import { FOUNDER_DAYS, FOUNDER_SLOTS, MAX_MEMBER_PRICE, MIN_MEMBER_PRICE, pricingReady, publicPricing, REQUIRE_PAYMENT, TRIAL_DAYS } from "./pricing.js";
 
 const DB_FILE = process.env.SOCIAL_DB || "./data/social.db";
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
@@ -46,10 +46,23 @@ addCol("communities", "about", "TEXT NOT NULL DEFAULT ''"); // длинное о
 addCol("communities", "media", "TEXT NOT NULL DEFAULT ''"); // галерея витрины: JSON-массив {type, url, thumb}, до 8 штук
 // Оплаченный тариф создателя сообществ (его записывает этап оплаты; пока записей нет, создавать может только администратор)
 db.exec("CREATE TABLE IF NOT EXISTS creator_subs(addr TEXT PRIMARY KEY, plan TEXT NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL)");
+addCol("creator_subs", "source", "TEXT NOT NULL DEFAULT 'paid'"); // откуда тариф: paid (оплата), founder (первые 50: 3 месяца), trial (14 дней)
 /** Записать (или продлить) оплаченный тариф создателя: вызывается после подтверждения платежа */
-export function grantCreatorPlan(addr: string, plan: string, expires: number) {
-  db.prepare("INSERT OR REPLACE INTO creator_subs(addr,plan,expires,created) VALUES(?,?,?,?)").run(addr, plan, expires, Date.now());
+export function grantCreatorPlan(addr: string, plan: string, expires: number, source = "paid") {
+  db.prepare("INSERT OR REPLACE INTO creator_subs(addr,plan,expires,created,source) VALUES(?,?,?,?,?)").run(addr, plan, expires, Date.now(), source);
 }
+/** Бесплатный период создателя: первые FOUNDER_SLOTS создателей получают 3 месяца, остальные 14 дней. Один раз на кошелёк, тариф «Старт» (комиссия с участников удерживается) */
+function grantTrial(addr: string): "founder" | "trial" | null {
+  if (db.prepare("SELECT 1 FROM creator_subs WHERE addr=?").get(addr)) return null; // подписка или пробный период уже были
+  const founders = (db.prepare("SELECT COUNT(*) AS n FROM creator_subs WHERE source='founder'").get() as { n: number }).n;
+  const kind = founders < FOUNDER_SLOTS ? "founder" : "trial";
+  grantCreatorPlan(addr, "start", Date.now() + (kind === "founder" ? FOUNDER_DAYS : TRIAL_DAYS) * 86400000, kind);
+  return kind;
+}
+const subInfo = (a: string) => {
+  const r = db.prepare("SELECT plan, expires, source FROM creator_subs WHERE addr=?").get(a) as { plan: string; expires: number; source: string } | undefined;
+  return r ? { plan: r.plan, expires: r.expires, source: r.source, active: r.expires > Date.now() } : null;
+};
 const hasCreatorPlan = (addr: string): boolean => {
   const r = db.prepare("SELECT expires FROM creator_subs WHERE addr=?").get(addr) as { expires: number } | undefined;
   return !!r && r.expires > Date.now();
@@ -177,11 +190,13 @@ function normMedia(v: unknown): MediaItem[] | null {
   return out;
 }
 const parseMedia = (raw: string): MediaItem[] => { try { const a = JSON.parse(raw || "[]"); return Array.isArray(a) ? (a as MediaItem[]) : []; } catch { return []; } };
+/** Сообщество работает, пока у владельца оплачен тариф или идёт бесплатный период (главное сообщество и сообщества администратора без ограничений) */
+const ownerActive = (c: { slug: string; owner: string }): boolean => c.slug === MAIN || isAdm(c.owner) || hasCreatorPlan(c.owner);
 const card = (c: Row, viewer: string) => {
   const plans = plansOf(c.slug);
   return {
     slug: c.slug, name: c.name, descr: c.descr, about: c.about, media: parseMedia(c.media), cover: c.cover, owner: ownerName(c.owner), members: countOf(c.slug),
-    visibility: c.visibility, category: c.category, categories: (c.categories || c.category).split(",").filter(Boolean), role: roleOf(c, viewer), state: stateOf(c.slug, viewer), hidden: c.status !== "active", created: c.created,
+    visibility: c.visibility, category: c.category, categories: (c.categories || c.category).split(",").filter(Boolean), role: roleOf(c, viewer), state: stateOf(c.slug, viewer), hidden: c.status !== "active", paused: !ownerActive(c), sub: c.owner === viewer ? subInfo(viewer) : null, created: c.created,
     paid: plans.some((p) => p.price_micro > 0), trial: plans.some((p) => p.trial_days > 0), language: c.language, recent: recentOf(c.slug),
     plans: plans.map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price_micro / 1e6, trial: p.trial_days })),
   };
@@ -197,7 +212,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
     // чтение без входа: каталог и страница сообщества
     if (req.method === "GET" && (p === "/api/communities" || p === "/api/communities/")) {
       const q = clean(url.searchParams.get("q"), 40).toLowerCase();
-      let rows = db.prepare("SELECT * FROM communities WHERE status='active'").all() as Row[];
+      let rows = (db.prepare("SELECT * FROM communities WHERE status='active'").all() as Row[]).filter(ownerActive); // сообщества без оплаты или бесплатного периода в каталоге не показываем
       const cat = clean(url.searchParams.get("category"), 30);
       if (cat && isCategory(cat)) rows = rows.filter((c) => (c.categories || c.category).split(",").includes(cat));
       if (q) rows = rows.filter((c) => c.name.toLowerCase().includes(q) || c.descr.toLowerCase().includes(q) || c.slug.includes(q));
@@ -211,7 +226,15 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
     }
 
     if (req.method === "GET" && p === "/api/communities/categories") return out(200, { ok: true, items: CATEGORIES, languages: LANGUAGES });
-    if (req.method === "GET" && p === "/api/communities/pricing") return out(200, { ok: true, ...publicPricing(), canCreate: !REQUIRE_PAYMENT || isAdm(viewer) || (pricingReady() && !!viewer && hasCreatorPlan(viewer)) });
+    if (req.method === "GET" && p === "/api/communities/pricing") {
+      const founders = (db.prepare("SELECT COUNT(*) AS n FROM creator_subs WHERE source='founder'").get() as { n: number }).n;
+      const mine = viewer ? subInfo(viewer) : null;
+      const trialAvailable = !mine; // бесплатный период ещё не использован
+      return out(200, {
+        ok: true, ...publicPricing(), founderSlots: FOUNDER_SLOTS, founderLeft: Math.max(0, FOUNDER_SLOTS - founders), founderDays: FOUNDER_DAYS, trialDays: TRIAL_DAYS,
+        sub: mine, trialAvailable, canCreate: !REQUIRE_PAYMENT || isAdm(viewer) || (pricingReady() && !!viewer && (hasCreatorPlan(viewer) || trialAvailable)),
+      });
+    }
 
     if (!viewer) return bad("auth", 401);
     const me = userRow(viewer);
@@ -241,9 +264,11 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
 
     if (p === "/api/communities/create") {
       if (!me) return bad("no_profile", 403); // сначала создайте профиль с ником
-      if (REQUIRE_PAYMENT && !isAdm(viewer)) { // создание платное: нужен оплаченный тариф создателя
+      let needTrial = false; // нужен тариф создателя: действующий (бесплатный период или оплата), либо впервые бесплатный период
+      if (REQUIRE_PAYMENT && !isAdm(viewer) && !hasCreatorPlan(viewer)) {
         if (!pricingReady()) return bad("creation_closed", 403); // цены ещё не заданы
-        if (!hasCreatorPlan(viewer)) return bad("payment_required", 402);
+        if (subInfo(viewer)) return bad("payment_required", 402); // бесплатный период или оплаченный срок закончился
+        needTrial = true;
       }
       if (!SLUG_RE.test(slug) || RESERVED.has(slug)) return bad("bad_slug");
       const name = clean(m.name, 40), descr = clean(m.descr, 300);
@@ -254,6 +279,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (limited("com_new:" + viewer, 5, DAY)) return bad("slow_down", 429);
       const now = Date.now();
       const cats = categoriesOr(m.categories ?? m.category);
+      if (needTrial) grantTrial(viewer); // бесплатный период выдаём, только когда остальные проверки пройдены
       db.prepare("INSERT INTO communities(slug,name,descr,owner,visibility,category,categories,language,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)").run(slug, name, descr, viewer, vis(m.visibility, "open"), cats[0], cats.join(","), languageOr(m.language), now, now);
       db.prepare("INSERT INTO community_members(community,addr,role,state,joined) VALUES(?,?,'owner','active',?)").run(slug, viewer, now);
       return out(200, { ok: true, community: card(getC(slug) as Row, viewer) });
@@ -269,6 +295,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (slug === MAIN || c.owner === viewer) return out(200, { ok: true, community: card(c, viewer) });
       const cur = memOf(slug, viewer);
       if (cur && cur.state === "active" && (cur.expires === 0 || cur.expires > Date.now())) return out(200, { ok: true, community: card(c, viewer) });
+      if (!ownerActive(c)) return bad("community_paused", 403); // у владельца закончился бесплатный период или оплаченный срок
       if (c.visibility === "open") {
         db.prepare("INSERT OR REPLACE INTO community_members(community,addr,role,state,plan,expires,joined) VALUES(?,?,'member','active',0,0,?)").run(slug, viewer, Date.now());
         return out(200, { ok: true, community: card(c, viewer) });

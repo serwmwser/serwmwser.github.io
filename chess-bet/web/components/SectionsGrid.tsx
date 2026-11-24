@@ -6,6 +6,7 @@ import { ROUTES } from "@/lib/urls";
 
 type Item = { href: string; ru: string; en: string; icon: string };
 const ITEMS: Item[] = [
+  { href: ROUTES.communities, ru: "Сообщества", en: "Communities", icon: "👥" },
   { href: ROUTES.home, ru: "Играть", en: "Play", icon: "♞" },
   { href: ROUTES.chess, ru: "Шахматы", en: "Chess", icon: "♟" },
   { href: ROUTES.crypto, ru: "Крипто", en: "Crypto", icon: "🪙" },

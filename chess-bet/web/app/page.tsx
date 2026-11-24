@@ -30,6 +30,7 @@ import CorrLobby from "@/components/CorrLobby";
 import OnlineGame from "@/components/OnlineGame";
 import { WaitingSplash } from "@/components/Splash";
 import Profile from "@/components/Profile";
+import Landing from "@/components/Landing";
 import { fetchMine } from "@/lib/api";
 import { TERMS_URL } from "@/lib/config";
 import { useApp } from "@/lib/ctx";
@@ -59,7 +60,7 @@ function alertJoin(title: string, body: string) {
   } catch { /* уведомления недоступны */ }
 }
 
-export default function Home() {
+function AppHome() {
   const { t, toast, lang } = useApp();
   const ru = lang === "ru";
   const notified = useRef<number | null>(null);
@@ -230,4 +231,18 @@ export default function Home() {
       <BottomNav tab={tab} setTab={setTab} badge={gid !== null} botBadge={botActive} cartBadge={cartActive} />
     </>
   );
+}
+
+/** Первая страница: посетителю без входа и без параметров в адресе показываем лендинг, остальным сразу приложение */
+export default function Home() {
+  const account = useActiveAccount();
+  const [mode, setMode] = useState<"landing" | "app">("landing");
+  useEffect(() => {
+    let returning = false;
+    try { returning = Object.keys(localStorage).some((k) => k.startsWith("thirdweb:")); } catch { /* без хранилища */ }
+    if (location.search || location.hash || returning) setMode("app"); // ссылки-приглашения, вход уже выполнялся
+  }, []);
+  useEffect(() => { if (account) setMode("app"); }, [account]);
+  if (mode === "landing") return <Landing onStart={() => { setMode("app"); window.scrollTo(0, 0); }} />;
+  return <AppHome />;
 }

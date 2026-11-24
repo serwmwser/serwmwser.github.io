@@ -14,6 +14,8 @@ export const ROUTES = {
   leaderboard: `${BASE}/leaderboard/`,
   faq: `${BASE}/faq/`,
   ads: `${BASE}/ads/`,
+  communities: `${BASE}/communities/`,
+  community: `${BASE}/community/`,
   terms: `${BASE}/terms/`,
   age: `${BASE}/age/`,
   roadmap: `${BASE}/roadmap/`,

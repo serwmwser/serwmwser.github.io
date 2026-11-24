@@ -7,6 +7,9 @@ export type Category = { slug: string; ru: string; en: string; icon: string };
 export type Language = { code: string; name: string };
 export type PlanPeriod = "month" | "quarter" | "year" | "lifetime";
 export type CommunityPlan = { id: number; name: string; period: PlanPeriod; price: number; trial: number };
+export type MediaItem = { type: "video" | "image"; url: string; thumb: string };
+/** Тариф создателя: source: paid (оплата), founder (первые 50: 3 месяца бесплатно), trial (14 дней бесплатно) */
+export type CreatorSub = { plan: string; expires: number; source: "paid" | "founder" | "trial"; active: boolean };
 export type Community = {
   slug: string; name: string; descr: string; cover: string; owner: string | null; members: number;
   visibility: "open" | "closed"; category: string; categories: string[];
@@ -16,12 +19,21 @@ export type Community = {
   trial: boolean;     // есть тариф с пробным периодом
   language: string;   // код языка; пусто = многоязычное
   recent: number;     // вступило за последние 7 дней
+  about: string;      // длинное описание страницы-витрины
+  media: MediaItem[]; // галерея витрины: видео (YouTube, Vimeo, RuTube) и картинки
+  paused: boolean;    // у владельца закончился бесплатный период или тариф: сообщество на паузе
+  sub: CreatorSub | null; // тариф владельца (приходит только самому владельцу)
 };
 export type CreatorPlanInfo = {
   id: "start" | "pro"; name: [string, string]; feePct: number | null; customUrl: boolean; affiliates: boolean;
   features: [string, string][]; month: number | null; year: number | null;
 };
-export type Pricing = { ready: boolean; requirePayment: boolean; yearFreeMonths: number; plans: CreatorPlanInfo[]; canCreate: boolean };
+export type Pricing = {
+  ready: boolean; requirePayment: boolean; yearFreeMonths: number; plans: CreatorPlanInfo[]; canCreate: boolean;
+  platformAffiliatePct: number; minMemberPrice: number; maxMemberPrice: number;
+  founderSlots: number; founderLeft: number; founderDays: number; trialDays: number; // первые 50 создателей: 3 месяца, остальные 14 дней бесплатно
+  sub: CreatorSub | null; trialAvailable: boolean;
+};
 export type JoinRequest = { addr: string; name: string | null; at: number };
 
 /** Главное сообщество: это сам сайт HiMeet, вступать в него не нужно */
@@ -68,7 +80,7 @@ export const joinCommunity = (token: string, slug: string, plan?: number) =>
 export const leaveCommunity = (token: string, slug: string) => call<object>("/api/communities/leave", token, { slug });
 export const createCommunity = (token: string, d: { slug: string; name: string; descr: string; visibility: "open" | "closed"; categories: string[]; language?: string }) =>
   call<{ community: Community }>("/api/communities/create", token, d).then((j) => j.community);
-export const updateCommunity = (token: string, slug: string, d: { name?: string; descr?: string; cover?: string; visibility?: "open" | "closed"; categories?: string[]; language?: string }) =>
+export const updateCommunity = (token: string, slug: string, d: { name?: string; descr?: string; about?: string; media?: { type: "video" | "image"; url: string }[]; cover?: string; visibility?: "open" | "closed"; categories?: string[]; language?: string }) =>
   call<{ community: Community }>("/api/communities/update", token, { slug, ...d }).then((j) => j.community);
 export const addPlan = (token: string, slug: string, d: { name: string; period: PlanPeriod; price: number; trial?: number }) =>
   call<{ community: Community }>("/api/communities/plan_add", token, { slug, ...d }).then((j) => j.community);
@@ -78,6 +90,9 @@ export const listRequests = (token: string, slug: string) =>
   call<{ items: JoinRequest[] }>(`/api/communities/requests${qs({ slug })}`, token).then((j) => j.items);
 export const decideRequest = (token: string, slug: string, addr: string, approve: boolean) =>
   call<object>("/api/communities/decide", token, { slug, addr, approve });
+
+/** Адрес картинки: загруженные на сервер файлы приходят как /media/…, к ним добавляем адрес сервера */
+export const mediaSrc = (u: string): string => (u && u.startsWith("/") ? `${API_URL}${u}` : u);
 
 /** Подпись периода тарифа */
 export function periodText(p: PlanPeriod, ru: boolean): string {
@@ -104,14 +119,17 @@ export function communityError(code: string, ru: boolean): string {
     slug_taken: ["Такой адрес уже занят", "This address is taken"],
     bad_name: ["Название слишком короткое", "The name is too short"],
     too_many_communities: ["Можно создать не больше 3 сообществ", "You can create up to 3 communities"],
-    payment_required: ["Сначала оплатите тариф создателя", "Please pay for a creator plan first"],
+    payment_required: ["Бесплатный период закончился: оплатите тариф создателя", "Your free period has ended: please pay for a creator plan"],
+    community_paused: ["Сообщество на паузе: у владельца закончился тариф", "This community is paused: the owner's plan has ended"],
     creation_closed: ["Создание сообществ скоро откроется", "Creating communities opens soon"],
     payment_not_supported: ["Оплата тарифов сообщества скоро появится", "Paying for community plans is coming soon"],
     too_many_requests: ["Слишком много открытых заявок", "Too many pending requests"],
     owner_cannot_leave: ["Владелец не может выйти из своего сообщества", "The owner cannot leave their community"],
     slow_down: ["Слишком часто, попробуйте позже", "Too fast, try again later"],
     bad_cover: ["Обложка: ссылка на картинку, начинается с https://", "Cover: an image link starting with https://"],
-    bad_price: ["Цена от 0 до 10000 USDC", "Price from 0 to 10000 USDC"],
+    bad_price: ["Цена: бесплатно или от 1 до 1000 USDC", "Price: free or from 1 to 1000 USDC"],
+    bad_media: ["Галерея: до 8 элементов; видео только YouTube, Vimeo или RuTube (ссылка https), картинки по ссылке https или загруженные", "Gallery: up to 8 items; videos from YouTube, Vimeo or RuTube only (https link), images by https link or uploaded"],
+    too_big: ["Слишком длинный текст", "The text is too long"],
     too_many_plans: ["Не больше 6 тарифов", "Up to 6 plans"],
   };
   const x = t[code];

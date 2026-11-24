@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS partner_links(
   code TEXT PRIMARY KEY, community TEXT NOT NULL, partner TEXT NOT NULL, tariff INTEGER NOT NULL, created INTEGER NOT NULL, UNIQUE(community, partner));
 CREATE TABLE IF NOT EXISTS creator_ref(addr TEXT PRIMARY KEY, ref TEXT NOT NULL, created INTEGER NOT NULL);
 `);
+try { db.exec("ALTER TABLE creator_subs ADD COLUMN source TEXT NOT NULL DEFAULT 'paid'"); } catch { /* колонка уже есть */ }
 
 const DAY = 86400000;
 const PAY_TO = (process.env.ADS_PAY_TO || "").toLowerCase();
@@ -228,7 +229,7 @@ export async function handlePay(req: http.IncomingMessage, res: http.ServerRespo
         db.transaction(() => {
           db.prepare("INSERT INTO pay_in(tx,kind,payer,community,plan,gross,fee,to_owner,to_partner,created) VALUES(?,?,?,?,?,?,?,?,?,?)")
             .run(tx, "creator", viewer, "", plan.id + "/" + period, micro, micro - refAmt, 0, refAmt, now);
-          db.prepare("INSERT OR REPLACE INTO creator_subs(addr,plan,expires,created) VALUES(?,?,?,?)").run(viewer, plan.id, expires, now);
+          db.prepare("INSERT OR REPLACE INTO creator_subs(addr,plan,expires,created,source) VALUES(?,?,?,?,'paid')").run(viewer, plan.id, expires, now);
           if (ref) {
             db.prepare("INSERT OR IGNORE INTO creator_ref(addr,ref,created) VALUES(?,?,?)").run(viewer, ref, now);
             db.prepare("INSERT INTO pay_out(tx,payee,role,community,amount,due) VALUES(?,?,?,?,?,?)").run(tx, ref, "referrer", "", refAmt, dueFor(now));
@@ -244,6 +245,7 @@ export async function handlePay(req: http.IncomingMessage, res: http.ServerRespo
       const c = getC(clean(m.slug, 30).toLowerCase());
       if (!c || c.status !== "active" || c.slug === MAIN) return bad("not_found", 404);
       if (c.owner === viewer) return bad("own_community");
+      if (!isAdm(c.owner) && !activeSub(c.owner)) return bad("community_paused", 403); // у владельца закончился бесплатный период или оплаченный срок
       const pl = db.prepare("SELECT * FROM community_plans WHERE id=? AND community=? AND active=1").get(Number(m.plan) || 0, c.slug) as CPlan | undefined;
       if (!pl || pl.price_micro <= 0) return bad("bad_plan");
       if (pl.price_micro < MIN_MEMBER_PRICE * 1e6 || pl.price_micro > MAX_MEMBER_PRICE * 1e6) return bad("bad_price");

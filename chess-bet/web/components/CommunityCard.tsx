@@ -2,7 +2,7 @@
 // Карточка сообщества для каталога: обложка, значок категории, название, описание, участники, цена.
 import Link from "next/link";
 import { useApp } from "@/lib/ctx";
-import { communityUrl, fromPrice, type Category, type Community } from "@/lib/communities";
+import { communityUrl, fromPrice, mediaSrc, type Category, type Community } from "@/lib/communities";
 
 // Запасные обложки, если владелец свою не загрузил: цвет выбирается по названию сообщества, чтобы у каждого он был свой и не менялся
 const GRADIENTS = [
@@ -32,7 +32,7 @@ export default function CommunityCard({ c, cats }: { c: Community; cats: Record<
       <div className="relative aspect-[16/9] w-full" style={c.cover ? undefined : { background: gradientFor(c.slug) }}>
         {c.cover && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={c.cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={mediaSrc(c.cover)} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
         )}
         {!c.cover && <span className="absolute inset-0 grid place-items-center text-6xl opacity-90 select-none" aria-hidden>{main?.icon || "✨"}</span>}
         <span className="absolute left-2 top-2 flex gap-1">

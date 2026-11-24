@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useApp } from "@/lib/ctx";
 import { BASE, ROUTES } from "@/lib/urls";
 import { getPricing, type Pricing } from "@/lib/communities";
+import PromoStrip from "./PromoStrip";
 
 type L = [string, string]; // [ru, en]
 const COMMUNITIES = `${BASE}/communities/`;
@@ -88,6 +89,9 @@ export default function Landing({ onStart }: { onStart: () => void }) {
         </div>
         <p className="mt-4 text-xs opacity-80">{ru ? "18+. Доступность функций зависит от законов вашей страны." : "18+. Feature availability depends on the laws of your country."}</p>
       </section>
+
+      {/* Реклама: блок виден, только когда есть активная реклама */}
+      <PromoStrip className="mx-4 my-6 max-w-6xl lg:mx-auto" />
 
       {/* Вкладки возможностей */}
       <section id="features" className="mx-auto max-w-6xl px-4 py-12">

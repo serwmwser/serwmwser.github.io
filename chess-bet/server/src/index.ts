@@ -33,6 +33,7 @@ import { handleFunnel } from "./funnel.js";
 import { handleLinks } from "./links.js";
 import { handleCorr } from "./corr.js";
 import { handleCommunities } from "./communities.js";
+import { handlePromos } from "./promos.js";
 import { handlePay, setChainVerifier, setReferrerResolver } from "./payments.js";
 
 const SITE_URL = process.env.SITE_URL || "https://himeet.online";
@@ -577,6 +578,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/api/report" || url.pathname.startsWith("/api/mod/")) { handleMod(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/calls/")) { handleCalls(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/links/")) { handleLinks(req, res, url).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
+  if (url.pathname === "/api/promos" || url.pathname.startsWith("/api/promos/")) { handlePromos(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/communities" || url.pathname.startsWith("/api/communities/")) { handleCommunities(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/pay/")) { handlePay(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/corr/")) { handleCorr(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }

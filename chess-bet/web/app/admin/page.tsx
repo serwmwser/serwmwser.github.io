@@ -208,6 +208,7 @@ export default function AdminPage() {
             <button type="button" aria-pressed={tab === "users"} className={tab === "users" ? "btn btn-primary !py-2" : "btn btn-ghost !py-2"} onClick={() => setTab("users")}>👤 {ru ? "Пользователи" : "Users"}</button>
             <button type="button" aria-pressed={tab === "funnel"} className={tab === "funnel" ? "btn btn-primary !py-2" : "btn btn-ghost !py-2"} onClick={() => setTab("funnel")}>📊 {ru ? "Воронка" : "Funnel"}</button>
             <Link href="/admin/income/" className="btn btn-ghost !py-2">💰 {ru ? "Получено" : "Income"}</Link>
+            <Link href="/admin/promos/" className="btn btn-ghost !py-2">📢 {ru ? "Реклама" : "Ads"}</Link>
           </nav>
           {tab === "reports" ? <Reports token={s.token} /> : tab === "funnel" ? <Funnel token={s.token} /> : <Users token={s.token} />}
         </>

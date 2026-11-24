@@ -118,7 +118,7 @@ export default function NewCommunityPage() {
               🎁 {freeText}{" "}
               {ru ? "Зарабатывать можно сразу: комиссия платформы с платежей участников удерживается и в бесплатный период. Перейти на «Про» можно в любой момент, остаток бесплатного времени сохранится." : "You can earn right away: the platform fee on member payments applies during the free period too. You can switch to Pro any time and keep the remaining free time."}
             </p>
-            <p className="text-xs opacity-60">{ru ? `Партнёрская программа платформы: ${pr.platformAffiliatePct}% от оплат приглашённого вами создателя, пожизненно.` : `Platform affiliate programme: ${pr.platformAffiliatePct}% of the plan payments of every creator you invite, for life.`}</p>
+            <p className="text-xs opacity-60"><Link href={`${BASE}/affiliates/`} className="underline">{ru ? `Партнёрская программа платформы: ${pr.platformAffiliatePct}% от оплат приглашённого вами создателя, пожизненно.` : `Platform affiliate programme: ${pr.platformAffiliatePct}% of the plan payments of every creator you invite, for life.`}</Link></p>
           </section>
         )}
         {pr && !pr.ready && <p className="card text-sm opacity-80">{ru ? "Создание сообществ откроется совсем скоро." : "Community creation opens very soon."}</p>}

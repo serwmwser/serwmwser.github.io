@@ -22,6 +22,7 @@ export default function SiteFooter() {
     [ru ? "Шахматы онлайн бесплатно" : "Play chess online free", `${BASE}/chess/`, false],
     [ru ? "Крипто шахматы на USDC" : "Crypto chess for USDC", `${BASE}/crypto/`, false],
     [ru ? "Сообщества" : "Communities", `${BASE}/communities/`, false],
+    [ru ? "Партнёрка" : "Affiliates", `${BASE}/affiliates/`, false],
     [ru ? "Присоединиться" : "Join HiMeet", `${BASE}/join/`, false],
     [ru ? "Вопросы и ответы" : "FAQ", `${BASE}/faq/`, false],
     [ru ? "О нас" : "About us", `${BASE}/about/`, false],

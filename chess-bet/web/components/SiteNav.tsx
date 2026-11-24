@@ -10,6 +10,7 @@ import { useUnread } from "@/lib/dm";
 type Item = { href: string; ru: string; en: string; icon: string; also?: string[] };
 const ITEMS: Item[] = [
   { href: ROUTES.communities, ru: "Сообщества", en: "Communities", icon: "👥", also: [ROUTES.community] },
+  { href: ROUTES.affiliates, ru: "Партнёрка", en: "Affiliates", icon: "🤝" },
   { href: ROUTES.ads, ru: "Объявления", en: "Classifieds", icon: "🛍" },
   { href: ROUTES.dating, ru: "Знакомства", en: "Dating", icon: "💞" },
   { href: ROUTES.exchange, ru: "Языковой обмен", en: "Language exchange", icon: "🌍", also: [ROUTES.friends] },

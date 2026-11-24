@@ -15,6 +15,7 @@ export const ROUTES = {
   faq: `${BASE}/faq/`,
   ads: `${BASE}/ads/`,
   communities: `${BASE}/communities/`,
+  affiliates: `${BASE}/affiliates/`,
   community: `${BASE}/community/`,
   terms: `${BASE}/terms/`,
   age: `${BASE}/age/`,

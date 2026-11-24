@@ -44,7 +44,7 @@ const SECTIONS: { icon: string; title: L; text: L; points: L[]; href: string; ct
 const FOOT: { title: L; links: [L, string][] }[] = [
   { title: ["Продукт", "Product"], links: [[["Сообщества", "Communities"], COMMUNITIES], [["Чат с переводом", "Chat with translation"], ROUTES.translateChat], [["Знакомства", "Dating"], ROUTES.dating], [["Объявления", "Classifieds"], ROUTES.ads], [["Поиск друзей", "Find friends"], ROUTES.friends]] },
   { title: ["Игры", "Games"], links: [[["Шахматы онлайн", "Chess online"], ROUTES.chess], [["Шахматы на USDC", "Chess for USDC"], ROUTES.crypto], [["Мультяшные шахматы", "Cartoon chess"], ROUTES.cartoon], [["Шахматы по переписке", "Correspondence chess"], ROUTES.correspondence], [["Турниры", "Tournaments"], ROUTES.tournaments]] },
-  { title: ["Создателям", "Creators"], links: [[["Создать сообщество", "Create a community"], CREATE], [["Карта развития", "Roadmap"], ROUTES.roadmap], [["Белая книга", "Whitepaper"], ROUTES.whitepaper]] },
+  { title: ["Создателям", "Creators"], links: [[["Создать сообщество", "Create a community"], CREATE], [["Партнёрка 40%", "Affiliates 40%"], `${BASE}/affiliates/`], [["Карта развития", "Roadmap"], ROUTES.roadmap], [["Белая книга", "Whitepaper"], ROUTES.whitepaper]] },
   { title: ["О проекте", "Company"], links: [[["О нас", "About"], ROUTES.about], [["Вопросы и ответы", "FAQ"], ROUTES.faq], [["Условия", "Terms"], ROUTES.terms], [["18+", "18+"], ROUTES.age]] },
 ];
 

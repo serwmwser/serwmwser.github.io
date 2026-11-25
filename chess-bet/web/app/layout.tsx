@@ -57,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
       <head>
+        <meta name="p:domain_verify" content="b1e803f65b4dc0d395f213b8020cf18d" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD }} />
         <link rel="manifest" href={`${BASE}/manifest.json`} />
         <link rel="icon" href={`${BASE}/icon-192.png`} />

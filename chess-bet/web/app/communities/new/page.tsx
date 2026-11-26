@@ -78,9 +78,21 @@ export default function NewCommunityPage() {
       <main className="mx-auto max-w-4xl px-3 pt-4 pb-12 space-y-6">
         <Link href={`${BASE}/communities/`} className="text-sm underline opacity-80">← {ru ? "Все сообщества" : "All communities"}</Link>
         <header className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold" style={{ color: "#d4a017" }}>{ru ? "Создать сообщество" : "Create a community"}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-violet-900 dark:text-violet-200">{ru ? "Создать сообщество" : "Create a community"}</h1>
           <p className="text-sm sm:text-base opacity-85">{ru ? "Открытое или закрытое, бесплатное или платное: цену участия (от 1 до 1000 USDC) вы задаёте сами." : "Open or private, free or paid: you set the membership price (1 to 1000 USDC) yourself."}</p>
         </header>
+
+        {pr && pr.ready && (
+          <div id="founder-benefit" className="space-y-2">
+            <p className="rounded-2xl border-2 border-emerald-600 bg-emerald-50 px-4 py-3 text-base font-semibold text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100">
+              🎁 {freeText}
+            </p>
+            <p className="text-sm opacity-90">
+              {ru ? "Зарабатывать можно сразу: комиссия платформы с платежей участников удерживается и в бесплатный период. Перейти на «Про» можно в любой момент, остаток бесплатного времени сохранится." : "You can earn right away: the platform fee on member payments applies during the free period too. You can switch to Pro any time and keep the remaining free time."}
+            </p>
+            <p className="text-sm font-semibold"><Link href={`${BASE}/affiliates/`} className="underline">{ru ? `Партнёрская программа платформы: ${pr.platformAffiliatePct}% от оплат приглашённого вами создателя, пожизненно.` : `Platform affiliate programme: ${pr.platformAffiliatePct}% of the plan payments of every creator you invite, for life.`}</Link></p>
+          </div>
+        )}
 
         <section className="space-y-2" aria-label={ru ? "Презентация для создателей" : "Presentation for creators"}>
           <div className="flex flex-wrap items-center gap-2">
@@ -114,11 +126,6 @@ export default function NewCommunityPage() {
                 </div>
               ))}
             </div>
-            <p className="rounded-2xl border border-amber-500/50 bg-amber-400/15 px-4 py-3 text-sm">
-              🎁 {freeText}{" "}
-              {ru ? "Зарабатывать можно сразу: комиссия платформы с платежей участников удерживается и в бесплатный период. Перейти на «Про» можно в любой момент, остаток бесплатного времени сохранится." : "You can earn right away: the platform fee on member payments applies during the free period too. You can switch to Pro any time and keep the remaining free time."}
-            </p>
-            <p className="text-xs opacity-60"><Link href={`${BASE}/affiliates/`} className="underline">{ru ? `Партнёрская программа платформы: ${pr.platformAffiliatePct}% от оплат приглашённого вами создателя, пожизненно.` : `Platform affiliate programme: ${pr.platformAffiliatePct}% of the plan payments of every creator you invite, for life.`}</Link></p>
           </section>
         )}
         {pr && !pr.ready && <p className="card text-sm opacity-80">{ru ? "Создание сообществ откроется совсем скоро." : "Community creation opens very soon."}</p>}

@@ -7,6 +7,7 @@ import { useApp } from "@/lib/ctx";
 import { BASE, ROUTES } from "@/lib/urls";
 import { getPricing, type Pricing } from "@/lib/communities";
 import PromoStrip from "./PromoStrip";
+import FounderBanner from "./FounderBanner";
 
 type L = [string, string]; // [ru, en]
 const COMMUNITIES = `${BASE}/communities/`;
@@ -76,6 +77,9 @@ export default function Landing({ onStart }: { onStart: () => void }) {
         </select>
         <button type="button" className="btn btn-ghost !py-2" onClick={onStart}>{ru ? "Войти" : "Sign in"}</button>
       </header>
+
+      {/* Выгода для создателей: самая первая строка */}
+      <FounderBanner className="mx-4 mb-4 mt-4 max-w-6xl lg:mx-auto" />
 
       {/* Главный экран */}
       <section className="mx-4 max-w-6xl rounded-3xl px-5 py-14 text-center text-white sm:py-20 lg:mx-auto" style={{ background: "linear-gradient(135deg,#1e1b4b 0%,#6d28d9 45%,#ec4899 100%)" }}>

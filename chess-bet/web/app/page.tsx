@@ -32,6 +32,7 @@ import { WaitingSplash } from "@/components/Splash";
 import Profile from "@/components/Profile";
 import Landing from "@/components/Landing";
 import PromoStrip from "@/components/PromoStrip";
+import FounderBanner from "@/components/FounderBanner";
 import { fetchMine } from "@/lib/api";
 import { TERMS_URL } from "@/lib/config";
 import { useApp } from "@/lib/ctx";
@@ -161,6 +162,7 @@ function AppHome() {
         {inviteId !== null && <Invite id={inviteId} onClose={() => setInviteId(null)} />}
         {tab === "lobby" && (
           <div className="space-y-4">
+            <FounderBanner />
             <PromoStrip />
             <HomeTiles onEarn={() => setTab("earn")} onPlay={openGames} onCartoon={() => { setCartMode("bot"); setTab("cartoon"); }} />
             {/* HiMeet install */}

@@ -24,10 +24,17 @@ export type Order = {
   product: { id: number; title: string; image: string; kind: ProductKind; community: string } | null;
   pay: PayInfo | null; after: string; canDownload: boolean;
 };
+/** Список товаров сообщества: manage = текущий пользователь владелец (или админ), limit/used = лимит товаров по тарифу владельца */
+export type ProductList = { items: ProductAdmin[]; manage: boolean; limit: number; used: number; feePct: number };
+/** Заказ в списке владельца: fee = комиссия платформы, share = доля владельца, payout = выплата владельцу (pending / done) */
 export type OrderAdmin = {
-  id: string; code: string; email: string; method: "sbp" | "usdc"; status: OrderStatus; amount: number; note: string; tx: string;
-  product: number; title: string; created: number; paid_at: number; downloads: number;
+  id: string; code: string; email: string; method: "sbp" | "usdc"; status: OrderStatus; amount: number; fee: number; share: number;
+  payout: "" | "pending" | "done"; note: string; tx: string; product: number; title: string; community: string; created: number; paid_at: number; downloads: number;
 };
+/** Суммы по одной валюте: pending = ждёт выплаты владельцу, paid = уже выплачено */
+export type Earn = { pending: number; paid: number; fee: number; gross: number; count: number };
+export type Earnings = { feePct: number; rub: Earn; usdc: Earn };
+export type PayoutRow = { community: string; owner: string; rub: Earn; usdc: Earn };
 
 async function call<T>(path: string, token: string, post?: unknown): Promise<T> {
   const [wallet, tok] = (token || "").split("|");
@@ -47,7 +54,7 @@ async function call<T>(path: string, token: string, post?: unknown): Promise<T> 
 
 // ===== публично =====
 export const listProducts = (community: string, token = "", all = false) =>
-  call<{ items: ProductAdmin[] }>(`/api/shop/products?community=${encodeURIComponent(community)}${all ? "&all=1" : ""}`, token).then((j) => j.items);
+  call<ProductList>(`/api/shop/products?community=${encodeURIComponent(community)}${all ? "&all=1" : ""}`, token);
 export const getProduct = (id: number, token = "") =>
   call<{ product: ProductAdmin; sbp: boolean; usdc: boolean }>(`/api/shop/product?id=${id}`, token);
 export const createOrder = (product: number, email: string, method: "sbp" | "usdc") =>
@@ -62,7 +69,14 @@ export const downloadUrl = (id: string) => `${API_URL}/api/shop/download?id=${en
 // ===== администратор =====
 export const saveProduct = (token: string, p: ProductInput) => call<{ id: number }>("/api/shop/product/save", token, p).then((j) => j.id);
 export const deleteProduct = (token: string, id: number) => call<object>("/api/shop/product/delete", token, { id });
-export const listOrders = (token: string) => call<{ items: OrderAdmin[] }>("/api/shop/orders", token).then((j) => j.items);
+/** Заказы сообщества (владелец) или все заказы (администратор, если сообщество не указано) */
+export const listOrders = (token: string, community = "") =>
+  call<{ items: OrderAdmin[] }>(`/api/shop/orders${community ? `?community=${encodeURIComponent(community)}` : ""}`, token).then((j) => j.items);
+/** Заработок от товаров и услуг одного сообщества (отдельно от выплат за участников) */
+export const getEarnings = (token: string, community: string) => call<Earnings>(`/api/shop/earnings?community=${encodeURIComponent(community)}`, token);
+/** Для администратора: что ещё не выплачено владельцам сообществ за проданные товары и услуги */
+export const listPayouts = (token: string) => call<{ feePct: number; items: PayoutRow[] }>("/api/shop/earnings", token).then((j) => j.items);
+export const markPayout = (token: string, community: string) => call<{ orders: number }>("/api/shop/payout", token, { community });
 export const confirmOrder = (token: string, id: string, action: "paid" | "reject" | "reset") =>
   call<object>("/api/shop/order/confirm", token, { id, action });
 
@@ -95,7 +109,8 @@ export const usdc = (n: number) => `${(Math.round(n * 100) / 100).toString()} US
 
 const ERRORS: Record<string, [string, string]> = {
   auth: ["Войдите в аккаунт", "Please sign in"],
-  forbidden: ["Только для администратора", "Admins only"],
+  forbidden: ["Нет доступа: управлять товарами может владелец сообщества", "No access: only the community owner can manage products"],
+  limit_reached: ["Достигнут лимит товаров: 1 на тарифе Start, до 10 на Pro", "Product limit reached: 1 on Start, up to 10 on Pro"],
   not_found: ["Не найдено", "Not found"],
   not_ready: ["Файл товара ещё не загружен", "The product file is not uploaded yet"],
   bad_email: ["Проверьте адрес почты", "Check your email address"],

@@ -155,7 +155,7 @@ const cleanText = (s: unknown, max: number) =>
   String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E]/g, "").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
 type MediaItem = { type: "video" | "image"; url: string; thumb: string };
 /** Видео только с YouTube, Vimeo, RuTube: превращаем ссылку в безопасный адрес для встраивания */
-function parseVideo(u: string): { url: string; thumb: string } | null {
+export function parseVideo(u: string): { url: string; thumb: string } | null {
   let x: URL; try { x = new URL(u); } catch { return null; }
   if (x.protocol !== "https:") return null;
   const h = x.hostname.replace(/^www\.|^m\./, "");

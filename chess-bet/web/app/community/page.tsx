@@ -12,6 +12,7 @@ import CommunityAbout from "@/components/CommunityAbout";
 import CommunityManage from "@/components/CommunityManage";
 import CommunityPartners from "@/components/CommunityPartners";
 import ProductsSection from "@/components/ProductsSection";
+import CommunityPosts from "@/components/CommunityPosts";
 import TrialBanner from "@/components/TrialBanner";
 import { useApp } from "@/lib/ctx";
 import { useSocial } from "@/lib/social";
@@ -66,6 +67,7 @@ function View() {
               <h1 className="text-2xl sm:text-3xl font-extrabold break-words">{c.name}</h1>
             </header>
             <CommunityAbout c={c} onChange={setC} />
+            <CommunityPosts c={c} />
             <ProductsSection c={c} />
             {c.slug === MAIN_SLUG && token && <SectionsGrid force />}
             {owner && (

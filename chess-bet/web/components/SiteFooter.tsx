@@ -4,6 +4,7 @@ import { NFT_ADDRESS } from "@/lib/nft";
 import { useApp } from "@/lib/ctx";
 import { TG_BOT_URL } from "@/lib/telegram";
 import ProductHuntCard from "./ProductHuntCard";
+import SellerInfo from "./SellerInfo";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const scan = (a: string) => `https://polygonscan.com/address/${a}`;
@@ -87,6 +88,7 @@ export default function SiteFooter() {
         </ul>
       </nav>
       <ProductHuntCard />
+      <SellerInfo />
       <p className="text-xs opacity-60 text-center pb-2">© {new Date().getFullYear()} HiMeet · {ru ? "Все права защищены." : "All rights reserved."} · 18+ · {ru ? "Играйте ответственно." : "Play responsibly."}</p>
     </footer>
   );

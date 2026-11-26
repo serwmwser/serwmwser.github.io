@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/components/PageShell";
+import SellerInfo from "@/components/SellerInfo";
 import { useApp } from "@/lib/ctx";
 import { BASE } from "@/lib/urls";
 import { mediaSrc } from "@/lib/communities";
@@ -231,6 +232,7 @@ function View() {
           </form>
         </div>
       )}
+      <SellerInfo compact />
     </PageShell>
   );
 }

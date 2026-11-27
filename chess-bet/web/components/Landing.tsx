@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/ctx";
+import { LANGS, type Lang } from "@/lib/i18n";
 import { BASE, ROUTES } from "@/lib/urls";
 import { getPricing, type Pricing } from "@/lib/communities";
 import PromoStrip from "./PromoStrip";
@@ -71,9 +72,8 @@ export default function Landing({ onStart }: { onStart: () => void }) {
           <a href="#features" className="hover:underline">{ru ? "Возможности" : "Features"}</a>
           <a href="#creators" className="hover:underline">{ru ? "Создателям" : "Creators"}</a>
         </nav>
-        <select aria-label="Language" value={lang === "ru" ? "ru" : "en"} onChange={(e) => setLang(e.target.value as typeof lang)} className="ms-auto rounded-lg border border-black/15 dark:border-white/20 bg-transparent px-2 py-1 text-sm">
-          <option value="ru">RU</option>
-          <option value="en">EN</option>
+        <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="ms-auto rounded-lg border border-black/15 dark:border-white/20 bg-transparent px-2 py-1 text-sm max-w-[120px]">
+          {Object.entries(LANGS).map(([k, v]) => <option key={k} value={k} className="text-slate-900">{v}</option>)}
         </select>
         <button type="button" className="btn btn-ghost !py-2" onClick={onStart}>{ru ? "Войти" : "Sign in"}</button>
       </header>

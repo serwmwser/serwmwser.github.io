@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import PageShell from "@/components/PageShell";
+import EarnWays from "@/components/EarnWays";
 import { useApp } from "@/lib/ctx";
 import { BASE, ROUTES } from "@/lib/urls";
 import { CONTRACTS, EN, POLYGONSCAN, RU, SLICES, TOTAL } from "./content";
@@ -34,6 +35,8 @@ export default function TokenPage() {
       </nav>
 
       <div className="rounded-xl bg-amber-400/15 px-3 py-2 text-sm font-semibold text-amber-600 dark:text-amber-400">{c.status}</div>
+
+      <EarnWays />
 
       <section className="card space-y-3">
         <h2 className="text-lg font-bold">{c.factsH}</h2>

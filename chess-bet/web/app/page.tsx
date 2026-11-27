@@ -14,7 +14,6 @@ import AppDownload from "@/components/AppDownload";
 import InviteFriend from "@/components/InviteFriend";
 import TelegramCard from "@/components/TelegramCard";
 import SeoAbout from "@/components/SeoAbout";
-import AdsPromo from "@/components/AdsPromo";
 import SiteFooter from "@/components/SiteFooter";
 import NftStudio from "@/components/NftStudio";
 import type { Color } from "@/lib/room";
@@ -164,7 +163,7 @@ function AppHome() {
           <div className="space-y-4">
             <FounderBanner />
             <PromoStrip />
-            <HomeTiles onEarn={() => setTab("earn")} onPlay={openGames} onCartoon={() => { setCartMode("bot"); setTab("cartoon"); }} />
+            <HomeTiles onCartoon={() => { setCartMode("bot"); setTab("cartoon"); }} />
             {/* HiMeet install */}
             <AppDownload />
             <InviteFriend />
@@ -191,7 +190,6 @@ function AppHome() {
             <details open={moreOpen} onToggle={(e) => setMoreOpen((e.currentTarget as HTMLDetailsElement).open)} className="card">
               <summary className="cursor-pointer select-none text-lg font-extrabold" style={{ color: "#6d28d9" }}>✨ {ru ? "Ещё" : "More"}</summary>
               <div className="space-y-4 pt-4">
-                <AdsPromo />
                 <RefBanner onEarn={() => setTab("earn")} />
                 <button type="button" onClick={() => setTab("nft")} className="w-full rounded-2xl px-4 py-3 text-start shadow-glow" style={{ background: "linear-gradient(90deg,#ff5a1f,#ff4fa3,#8b4dff)", color: "#fff" }}><div className="text-base font-extrabold">🎨 {ru ? "Студия NFT" : "NFT Studio"}</div><div className="text-xs font-medium opacity-90">{ru ? "Выберите ход из своей партии и мультяшную фигуру: получится картинка-NFT" : "Pick a move from your game and a cartoon piece to make an NFT picture"}</div></button>
                 <div className="grid grid-cols-2 gap-2">

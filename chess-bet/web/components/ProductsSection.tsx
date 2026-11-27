@@ -114,7 +114,7 @@ export default function ProductsSection({ c }: { c: Community }) {
 
   const waiting = orders.filter((o) => o.status === "claimed" || o.status === "new");
   const statusText = (s: OrderAdmin["status"]) => ({ new: ru ? "создан" : "new", claimed: ru ? "ждёт проверки" : "to check", paid: ru ? "оплачен" : "paid", rejected: ru ? "отклонён" : "rejected" }[s]);
-  const money = (o: OrderAdmin, v: number) => (o.method === "sbp" ? rub(v) : usdc(v));
+  const money = (o: OrderAdmin, v: number) => (o.method === "usdc" ? usdc(v) : rub(v));
   const earnLine = (label: string, e: Earn, fmt: (n: number) => string) => e.count > 0 && (
     <p key={label} className="text-sm">
       <b>{label}:</b> {ru ? "продано на" : "sold for"} {fmt(e.gross)} · {ru ? "комиссия платформы" : "platform fee"} {fmt(e.fee)} ·{" "}

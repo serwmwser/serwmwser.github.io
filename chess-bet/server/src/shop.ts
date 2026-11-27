@@ -198,7 +198,7 @@ export async function handleShop(req: http.IncomingMessage, res: http.ServerResp
       const pr = getP(num(url.searchParams.get("id")));
       const mg = !!pr && canManage(viewer, pr.community);
       if (!pr || (pr.status !== "active" && !mg)) return bad("not_found", 404);
-      return out(200, { ok: true, product: mg ? adminProduct(pr) : publicProduct(pr), sbp: !!SBP_PHONE, usdc: /^0x[a-f0-9]{40}$/.test(PAY_TO) });
+      return out(200, { ok: true, product: mg ? adminProduct(pr) : publicProduct(pr), sbp: !!SBP_PHONE, yk: ykReady(), usdc: /^0x[a-f0-9]{40}$/.test(PAY_TO) });
     }
 
     // ===== покупка без регистрации =====

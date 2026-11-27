@@ -17,10 +17,11 @@ export type ProductInput = {
 
 export type PayInfo =
   | { method: "sbp"; phone: string; bank: string; holder: string; amountRub: number; comment: string }
+  | { method: "yk"; url: string; amountRub: number; comment: string }
   | { method: "usdc"; to: string; token: string; network: string; amount: number; comment: string };
 export type OrderStatus = "new" | "claimed" | "paid" | "rejected";
 export type Order = {
-  id: string; code: string; method: "sbp" | "usdc"; status: OrderStatus; amount: number; created: number; paid_at: number;
+  id: string; code: string; method: "sbp" | "usdc" | "yk"; status: OrderStatus; amount: number; created: number; paid_at: number;
   product: { id: number; title: string; image: string; kind: ProductKind; community: string } | null;
   pay: PayInfo | null; after: string; canDownload: boolean;
 };
@@ -28,7 +29,7 @@ export type Order = {
 export type ProductList = { items: ProductAdmin[]; manage: boolean; limit: number; used: number; feePct: number };
 /** Заказ в списке владельца: fee = комиссия платформы, share = доля владельца, payout = выплата владельцу (pending / done) */
 export type OrderAdmin = {
-  id: string; code: string; email: string; method: "sbp" | "usdc"; status: OrderStatus; amount: number; fee: number; share: number;
+  id: string; code: string; email: string; method: "sbp" | "usdc" | "yk"; status: OrderStatus; amount: number; fee: number; share: number;
   payout: "" | "pending" | "done"; note: string; tx: string; product: number; title: string; community: string; created: number; paid_at: number; downloads: number;
 };
 /** Суммы по одной валюте: pending = ждёт выплаты владельцу, paid = уже выплачено */
@@ -56,8 +57,8 @@ async function call<T>(path: string, token: string, post?: unknown): Promise<T> 
 export const listProducts = (community: string, token = "", all = false) =>
   call<ProductList>(`/api/shop/products?community=${encodeURIComponent(community)}${all ? "&all=1" : ""}`, token);
 export const getProduct = (id: number, token = "") =>
-  call<{ product: ProductAdmin; sbp: boolean; usdc: boolean }>(`/api/shop/product?id=${id}`, token);
-export const createOrder = (product: number, email: string, method: "sbp" | "usdc") =>
+  call<{ product: ProductAdmin; sbp: boolean; usdc: boolean; yk: boolean }>(`/api/shop/product?id=${id}`, token);
+export const createOrder = (product: number, email: string, method: "sbp" | "usdc" | "yk") =>
   call<{ order: Order }>("/api/shop/order", "", { product, email, method }).then((j) => j.order);
 export const getOrder = (id: string) => call<{ order: Order }>(`/api/shop/order?id=${encodeURIComponent(id)}`, "").then((j) => j.order);
 export const claimOrder = (id: string, note: string) => call<{ order: Order }>("/api/shop/order/claim", "", { id, note }).then((j) => j.order);
@@ -114,6 +115,7 @@ const ERRORS: Record<string, [string, string]> = {
   not_found: ["Не найдено", "Not found"],
   not_ready: ["Файл товара ещё не загружен", "The product file is not uploaded yet"],
   bad_email: ["Проверьте адрес почты", "Check your email address"],
+  pay_unavailable: ["Не удалось создать платёж в ЮKassa. Попробуйте позже или выберите другой способ", "Could not create the payment. Try again later or pick another method"],
   method_unavailable: ["Этот способ оплаты сейчас недоступен", "This payment method is unavailable"],
   slow_down: ["Слишком часто. Подождите немного", "Too many requests. Please wait a little"],
   bad_tx: ["Хеш перевода выглядит неверно (0x и 64 символа)", "The transaction hash looks wrong (0x + 64 characters)"],

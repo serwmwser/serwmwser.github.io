@@ -64,7 +64,7 @@ function OrderView({ order, onChange }: { order: Order; onChange: (o: Order) => 
         {order.product?.image && <img src={mediaSrc(order.product.image)} alt="" className="h-16 w-16 rounded-lg object-cover" />}
         <div className="min-w-0">
           <div className="font-bold break-words">{order.product?.title}</div>
-          <div className="text-xs opacity-70">{ru ? "Заказ" : "Order"} {order.code} · {order.method === "sbp" ? rub(order.amount) : usdc(order.amount)}</div>
+          <div className="text-xs opacity-70">{ru ? "Заказ" : "Order"} {order.code} · {order.method === "usdc" ? usdc(order.amount) : rub(order.amount)}</div>
         </div>
       </div>
 
@@ -83,6 +83,19 @@ function OrderView({ order, onChange }: { order: Order; onChange: (o: Order) => 
       )}
 
       {order.status === "rejected" && <div className="card text-sm">{ru ? "Заказ отклонён: оплата не найдена. Если вы платили, напишите продавцу с номером заказа." : "The order was rejected: no payment found. If you paid, contact the seller with the order number."}</div>}
+
+      {order.status === "new" && pay && pay.method === "yk" && (
+        <div className="card space-y-3">
+          <h2 className="font-bold">{ru ? "Оплата через СБП (ЮKassa)" : "Pay via SBP (YooKassa)"}</h2>
+          <ol className="list-decimal pl-5 text-sm space-y-1 opacity-90">
+            <li>{ru ? `Нажмите кнопку: откроется страница ЮKassa с QR-кодом СБП на сумму ${rub(pay.amountRub)}.` : `Press the button: a YooKassa page with an SBP QR code for ${rub(pay.amountRub)} opens.`}</li>
+            <li>{ru ? "Оплатите в приложении своего банка." : "Pay in your bank app."}</li>
+            <li>{ru ? "Вернитесь на эту страницу: заказ подтвердится сам, кнопка скачивания появится сразу." : "Come back to this page: the order confirms automatically and the download button appears."}</li>
+          </ol>
+          <a href={pay.url} className="btn btn-primary inline-block">{ru ? "Оплатить через СБП" : "Pay via SBP"}</a>
+          <p className="text-xs opacity-70">{ru ? "Время на оплату ограничено (около часа). Если не успели, оформите заказ заново." : "The payment window is limited (about an hour). If it expires, place the order again."}</p>
+        </div>
+      )}
 
       {(order.status === "new" || order.status === "claimed") && pay && pay.method === "sbp" && (
         <div className="card space-y-3">
@@ -150,11 +163,11 @@ function View() {
   const idParam = Number(params.get("id")) || 0;
   const orderParam = params.get("order") || "";
   const [product, setProduct] = useState<ProductAdmin | null>(null);
-  const [methods, setMethods] = useState<{ sbp: boolean; usdc: boolean }>({ sbp: false, usdc: false });
+  const [methods, setMethods] = useState<{ sbp: boolean; usdc: boolean; yk: boolean }>({ sbp: false, usdc: false, yk: false });
   const [order, setOrder] = useState<Order | null>(null);
   const [failed, setFailed] = useState(false);
   const [email, setEmail] = useState("");
-  const [method, setMethod] = useState<"sbp" | "usdc">("sbp");
+  const [method, setMethod] = useState<"sbp" | "usdc" | "yk">("sbp");
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const loaded = useRef("");
@@ -165,8 +178,8 @@ function View() {
       getOrder(orderParam).then((o) => { setOrder(o); rememberOrder(o.id); }).catch(() => setFailed(true));
     } else if (idParam) {
       getProduct(idParam).then((r) => {
-        setProduct(r.product); setMethods({ sbp: r.sbp && r.product.priceRub > 0, usdc: r.usdc && r.product.priceUsdc > 0 });
-        setMethod(r.sbp && r.product.priceRub > 0 ? "sbp" : "usdc");
+        setProduct(r.product); setMethods({ sbp: r.sbp && r.product.priceRub > 0, usdc: r.usdc && r.product.priceUsdc > 0, yk: r.yk && r.product.priceRub > 0 });
+        setMethod(r.yk && r.product.priceRub > 0 ? "yk" : r.sbp && r.product.priceRub > 0 ? "sbp" : "usdc");
       }).catch(() => setFailed(true));
     } else setFailed(true);
   }, [orderParam, idParam]);
@@ -209,12 +222,13 @@ function View() {
           {product.descr && <div className="card text-sm leading-relaxed whitespace-pre-line">{product.descr}</div>}
           <form onSubmit={buy} className="card space-y-3">
             <h2 className="font-bold">{ru ? "Купить без регистрации" : "Buy without signing up"}</h2>
-            {!methods.sbp && !methods.usdc ? (
+            {!methods.sbp && !methods.usdc && !methods.yk ? (
               <p className="text-sm opacity-80">{ru ? "Приём оплаты пока не настроен." : "Payments are not set up yet."}</p>
             ) : (
               <>
                 <div className="flex flex-wrap gap-2" role="group" aria-label={ru ? "Способ оплаты" : "Payment method"}>
-                  {methods.sbp && <button type="button" aria-pressed={method === "sbp"} className={`chip ${method === "sbp" ? "chip-on" : ""}`} onClick={() => setMethod("sbp")}>{ru ? `СБП · ${rub(product.priceRub)}` : `SBP · ${rub(product.priceRub)}`}</button>}
+                  {methods.yk && <button type="button" aria-pressed={method === "yk"} className={`chip ${method === "yk" ? "chip-on" : ""}`} onClick={() => setMethod("yk")}>{ru ? `СБП через ЮKassa · ${rub(product.priceRub)}` : `SBP via YooKassa · ${rub(product.priceRub)}`}</button>}
+                  {methods.sbp && <button type="button" aria-pressed={method === "sbp"} className={`chip ${method === "sbp" ? "chip-on" : ""}`} onClick={() => setMethod("sbp")}>{ru ? `${methods.yk ? "Перевод по номеру" : "СБП"} · ${rub(product.priceRub)}` : `${methods.yk ? "Transfer by phone" : "SBP"} · ${rub(product.priceRub)}`}</button>}
                   {methods.usdc && <button type="button" aria-pressed={method === "usdc"} className={`chip ${method === "usdc" ? "chip-on" : ""}`} onClick={() => setMethod("usdc")}>USDC · {usdc(product.priceUsdc)}</button>}
                 </div>
                 <label className="block text-sm">{ru ? "Ваша почта (для связи по заказу)" : "Your email (for order contact)"}

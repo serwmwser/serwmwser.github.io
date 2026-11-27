@@ -9,15 +9,12 @@ import { useUnread } from "@/lib/dm";
 
 type Item = { href: string; ru: string; en: string; icon: string; also?: string[] };
 const ITEMS: Item[] = [
+  { href: ROUTES.profile, ru: "Мессенджер", en: "Messenger", icon: "💬", also: [ROUTES.messages, ROUTES.feed, ROUTES.join, ROUTES.exchange, ROUTES.friends, ROUTES.translateChat] },
   { href: ROUTES.communities, ru: "Сообщества", en: "Communities", icon: "👥", also: [ROUTES.community] },
-  { href: ROUTES.affiliates, ru: "Партнёрка", en: "Affiliates", icon: "🤝" },
   { href: ROUTES.ads, ru: "Объявления", en: "Classifieds", icon: "🛍" },
   { href: ROUTES.dating, ru: "Знакомства", en: "Dating", icon: "💞" },
-  { href: ROUTES.exchange, ru: "Языковой обмен", en: "Language exchange", icon: "🌍", also: [ROUTES.friends] },
-  { href: ROUTES.messages, ru: "Общение", en: "Chat", icon: "💬", also: [ROUTES.feed, ROUTES.join] },
-  { href: ROUTES.profile, ru: "Профиль", en: "Profile", icon: "👤" },
-  { href: ROUTES.token, ru: "Заработать", en: "Earn", icon: "💰", also: [ROUTES.nft, ROUTES.roadmap, ROUTES.whitepaper] },
   { href: ROUTES.home + "#games", ru: "Играть", en: "Play", icon: "♞", also: [ROUTES.chess, ROUTES.crypto, ROUTES.puzzles, ROUTES.tournaments, ROUTES.cartoon, ROUTES.cartoon3d] },
+  { href: ROUTES.token, ru: "Заработать", en: "Earn", icon: "💰", also: [ROUTES.affiliates, ROUTES.nft, ROUTES.roadmap, ROUTES.whitepaper] },
 ];
 
 const norm = (p: string) => (p.endsWith("/") ? p : p + "/");

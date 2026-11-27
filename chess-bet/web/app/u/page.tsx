@@ -178,7 +178,6 @@ function Profile() {
 
       {!edit && (u.me ? <DailyQuests token={s.token} signIn={s.signIn} /> : <PlayerBadges name={u.name} />)}
       {!edit && u.me && <PushToggle />}
-      {!edit && u.me && <InviteFriend />}
       {!edit && u.me && <SectionsGrid force />}
 
       {edit && (
@@ -290,6 +289,8 @@ function Profile() {
         {more && !loading && <button type="button" className="btn btn-ghost w-full" onClick={() => load(false)}>{ru ? "Показать ещё" : "Load more"}</button>}
       </div>
       )}
+      {/* invite внизу */}
+      {!edit && u.me && <InviteFriend />}
     </>
   );
 }

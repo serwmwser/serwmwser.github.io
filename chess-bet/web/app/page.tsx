@@ -166,7 +166,6 @@ function AppHome() {
             <HomeTiles onCartoon={() => { setCartMode("bot"); setTab("cartoon"); }} />
             {/* HiMeet install */}
             <AppDownload />
-            <InviteFriend />
 
             <details id="games" open={gamesOpen} onToggle={(e) => setGamesOpen((e.currentTarget as HTMLDetailsElement).open)} className="card">
               <summary className="cursor-pointer select-none text-lg font-extrabold" style={{ color: "#6d28d9" }}>♞ {ru ? "Играть в шахматы" : "Play chess"}</summary>
@@ -201,6 +200,8 @@ function AppHome() {
             </details>
 
             <SeoAbout />
+            {/* invite внизу */}
+            <InviteFriend />
             <SiteFooter />
           </div>
         )}

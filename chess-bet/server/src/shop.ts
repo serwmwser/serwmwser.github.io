@@ -44,7 +44,7 @@ const SBP_PHONE = (process.env.SBP_PHONE || "").replace(/[^\d+]/g, "");
 const SBP_BANK = process.env.SBP_BANK || "Сбербанк";
 const SBP_HOLDER = process.env.SBP_HOLDER || ""; // имя получателя, как его покажет банк, например «Сергей К.»
 const FILE_MAX = 40 * 1024 * 1024;
-const MAX_DOWNLOADS = 20;
+const MAX_DOWNLOADS = 1; // одна оплата = одно скачивание; при сбое продавец может сбросить счётчик
 const FEE_PCT = 20; // комиссия платформы с продаж товаров и услуг (на любом тарифе)
 const LIMIT_START = 1, LIMIT_PRO = 10, LIMIT_ADMIN = 1000;
 

@@ -24,7 +24,7 @@ const RU: Sec[] = [
     "Продавец применяет налог на профессиональный доход, чек формируется в приложении «Мой налог» и направляется на указанный при заказе адрес электронной почты.",
   ]],
   ["4. Получение товара", [
-    "После подтверждения оплаты на странице заказа появляется кнопка скачивания. Ссылку на заказ сохраните: она же доступна в этом браузере и в письме. Количество скачиваний ограничено (до 20), при проблемах напишите нам, мы сбросим счётчик.",
+    "После подтверждения оплаты на странице заказа появляется кнопка скачивания. Ссылку на заказ сохраните: она же доступна в этом браузере и в письме. Оплата даёт право на одно скачивание за одну единицу товара: сохраните файл сразу. Если загрузка прервалась, напишите нам с кодом заказа, мы сбросим счётчик.",
     "Файлы предназначены для личного использования. Запрещено публиковать и перепродавать материалы без согласия автора.",
   ]],
   ["5. Возврат", [
@@ -51,7 +51,7 @@ const EN: Sec[] = [
   ]],
   ["2. Payment and delivery", [
     "Payment methods are shown at checkout: SBP bank transfer and USDC on Polygon. Card and SBP payments through YooKassa will be available once connected. An order counts as paid after the payment is confirmed. Blockchain transfers are irreversible; never share your seed phrase or private key.",
-    "After confirmation a download button appears on the order page (up to 20 downloads). Files are for personal use only.",
+    "After confirmation a download button appears on the order page (one download per unit purchased). Files are for personal use only.",
   ]],
   ["3. Refunds", [
     "If the file is broken or does not match its description, write to us within 7 days of payment and we will replace it or refund you. A correctly delivered digital product is not refundable for change of mind; an unperformed service is refunded in full.",

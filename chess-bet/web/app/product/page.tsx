@@ -76,7 +76,7 @@ function OrderView({ order, onChange }: { order: Order; onChange: (o: Order) => 
           {order.product?.kind === "digital" && (order.canDownload ? (
             <a href={downloadUrl(order.id)} className="btn btn-primary inline-block text-center">{ru ? "Скачать PDF" : "Download PDF"}</a>
           ) : (
-            <p className="text-sm opacity-80">{ru ? "Лимит скачиваний исчерпан или файл недоступен. Напишите продавцу, мы сбросим лимит." : "Download limit reached or the file is unavailable. Contact the seller."}</p>
+            <p className="text-sm opacity-80">{ru ? "Файл уже скачан (одна оплата — одно скачивание) или недоступен. Если загрузка прервалась, напишите продавцу с кодом заказа." : "Download limit reached or the file is unavailable. Contact the seller."}</p>
           ))}
           <p className="text-xs opacity-70">{ru ? "Сохраните эту ссылку: по ней файл можно скачать снова." : "Save this link: you can download the file again with it."}</p>
           <div className="flex flex-wrap items-center gap-2 text-xs break-all"><span>{link}</span><Copy text={link} label={ru ? "Ссылка на заказ" : "Order link"} /></div>

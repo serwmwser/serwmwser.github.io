@@ -14,12 +14,12 @@ const COMMUNITIES = `${BASE}/communities/`;
 const CREATE = `${BASE}/communities/new/`;
 
 const TABS: { id: string; icon: string; name: L; title: L; text: L; href: string; cta: L }[] = [
+  { id: "chat", icon: "💬", name: ["Мессенджер", "Messenger"], href: ROUTES.translateChat, cta: ["Открыть мессенджер", "Open the messenger"],
+    title: ["Мессенджер с автопереводом", "Messenger with auto-translation"],
+    text: ["Пишите людям из любой страны на своём языке: сообщения переводятся автоматически. Звонки, голосовые, файлы, поиск собеседников для языкового обмена и один профиль для всего приложения.", "Write to people from any country in your own language: messages are translated automatically. Calls, voice messages, files, finding language partners and one profile for the whole app."] },
   { id: "clubs", icon: "👥", name: ["Клубы", "Clubs"], href: COMMUNITIES, cta: ["Смотреть клубы", "Browse clubs"],
     title: ["Клубы по интересам", "Clubs for every interest"],
     text: ["Вступайте в открытые и закрытые сообщества или создайте своё: сами задаёте цену участия от 1 до 1000 USDC и получаете доход с каждого участника.", "Join open and private communities or start your own: you set the membership price from 1 to 1000 USDC and earn from every member."] },
-  { id: "chat", icon: "💬", name: ["Чат", "Chat"], href: ROUTES.translateChat, cta: ["Открыть чат", "Open chat"],
-    title: ["Чат с автопереводом", "Chat with auto-translation"],
-    text: ["Пишите людям из любой страны на своём языке: сообщения переводятся автоматически, а звонки и голосовые доступны из профиля.", "Write to people from any country in your own language: messages are translated automatically, and calls are available from the profile."] },
   { id: "dating", icon: "💞", name: ["Знакомства", "Dating"], href: ROUTES.dating, cta: ["Найти пару", "Find a match"],
     title: ["Друзья и пара по интеллекту", "Friends and a match by mind"],
     text: ["Один профиль для всех клубов: находите друзей и людей, с которыми интересно говорить, по увлечениям, языкам и играм.", "One profile for every club: find friends and people who are interesting to talk to by hobbies, languages and games."] },
@@ -83,9 +83,9 @@ export default function Landing({ onStart }: { onStart: () => void }) {
 
       {/* Главный экран */}
       <section className="mx-4 max-w-6xl rounded-3xl px-5 py-14 text-center text-white sm:py-20 lg:mx-auto" style={{ background: "linear-gradient(135deg,#1e1b4b 0%,#6d28d9 45%,#ec4899 100%)" }}>
-        <h1 className="mx-auto max-w-3xl text-3xl font-extrabold leading-tight sm:text-5xl">{ru ? "Играй, учись и создавай клубы, которые приносят доход" : "Play, learn and build clubs that earn"}</h1>
+        <h1 className="mx-auto max-w-3xl text-3xl font-extrabold leading-tight sm:text-5xl">{ru ? "Мессенджер, где вас понимают на любом языке" : "A messenger where everyone understands you in any language"}</h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm opacity-95 sm:text-lg">
-          {ru ? "Одно приложение вместо пяти: находи друзей и пару по интеллекту, продавай и покупай по всему миру без языкового барьера, вступай в клубы по интересам и монетизируй свой ум в играх" : "One app instead of five: find friends and a match by mind, sell and buy worldwide without a language barrier, join clubs by interest and monetize your mind in games"}
+          {ru ? "Общайтесь с людьми со всего мира на своём языке: перевод встроен в каждый чат. Один профиль для сообщений, звонков, клубов, объявлений и игр. Создайте платный клуб и зарабатывайте: автор из России может продавать клуб иностранной аудитории, и его поймут." : "Talk to people from all over the world in your own language: translation is built into every chat. One profile for messages, calls, clubs, classifieds and games. Start a paid club and earn: an author from any country can sell a club to a foreign audience and be understood."}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <button type="button" className="btn btn-primary !px-6 !py-3 text-base" onClick={onStart}>{ru ? "Начать" : "Get started"}</button>
@@ -114,7 +114,7 @@ export default function Landing({ onStart }: { onStart: () => void }) {
       {/* Что такое HiMeet */}
       <section className="mx-auto max-w-3xl px-4 py-8 text-center space-y-3">
         <h2 className="text-2xl font-extrabold sm:text-3xl">{ru ? "Что такое HiMeet?" : "What is HiMeet?"}</h2>
-        <p className="text-sm sm:text-base opacity-85">{ru ? "HiMeet объединяет сообщества, чат с переводом, знакомства, объявления и игры на мастерство под одним профилем. Вы входите один раз и попадаете во все клубы сразу, а создатели получают собственную страницу, приём платежей и партнёрскую программу." : "HiMeet brings communities, translated chat, dating, classifieds and skill games under one profile. You sign in once and reach every club, while creators get their own page, payments and a partner programme."}</p>
+        <p className="text-sm sm:text-base opacity-85">{ru ? "HiMeet это мессенджер с автопереводом, звонками и голосовыми сообщениями, в котором под одним профилем собраны сообщества, объявления, знакомства и игры. Сильная сторона: один профиль для общения на любом языке и клубов, где автор зарабатывает. Автор из России может продавать платный клуб иностранной аудитории, и его поймут. Создатели получают собственную страницу, приём платежей, магазин товаров и партнёрскую программу." : "HiMeet is a messenger with auto-translation, calls and voice messages that brings communities, classifieds, dating and games under one profile. Its strength: one profile for chatting in any language and for clubs where the author earns. An author from Russia can sell a paid club to a foreign audience and be understood. Creators get their own page, payments, a product shop and a partner programme."}</p>
       </section>
 
       {/* Разделы */}

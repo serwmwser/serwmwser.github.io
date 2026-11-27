@@ -11,7 +11,7 @@ export default function SellerInfo({ compact = false, className = "" }: { compac
   if (compact) {
     return (
       <p className={`text-xs opacity-70 ${className}`}>
-        {ru ? "Продавец: самозанятый" : "Seller: self-employed"} {SELLER_NAME}, {ru ? "ИНН" : "TIN"} {SELLER_INN}
+        {ru ? "Самозанятый" : "Self-employed"} {SELLER_NAME}, {ru ? "ИНН" : "TIN"} {SELLER_INN}
       </p>
     );
   }

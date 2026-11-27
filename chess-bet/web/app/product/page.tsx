@@ -179,7 +179,7 @@ function View() {
     } else if (idParam) {
       getProduct(idParam).then((r) => {
         setProduct(r.product); setMethods({ sbp: r.sbp && r.product.priceRub > 0, usdc: r.usdc && r.product.priceUsdc > 0, yk: r.yk && r.product.priceRub > 0 });
-        setMethod(r.yk && r.product.priceRub > 0 ? "yk" : r.sbp && r.product.priceRub > 0 ? "sbp" : "usdc");
+        setMethod(r.yk && r.product.priceRub > 0 ? "yk" : "usdc");
       }).catch(() => setFailed(true));
     } else setFailed(true);
   }, [orderParam, idParam]);
@@ -222,13 +222,12 @@ function View() {
           {product.descr && <div className="card text-sm leading-relaxed whitespace-pre-line">{product.descr}</div>}
           <form onSubmit={buy} className="card space-y-3">
             <h2 className="font-bold">{ru ? "Купить без регистрации" : "Buy without signing up"}</h2>
-            {!methods.sbp && !methods.usdc && !methods.yk ? (
+            {!methods.usdc && !methods.yk ? (
               <p className="text-sm opacity-80">{ru ? "Приём оплаты пока не настроен." : "Payments are not set up yet."}</p>
             ) : (
               <>
                 <div className="flex flex-wrap gap-2" role="group" aria-label={ru ? "Способ оплаты" : "Payment method"}>
                   {methods.yk && <button type="button" aria-pressed={method === "yk"} className={`chip ${method === "yk" ? "chip-on" : ""}`} onClick={() => setMethod("yk")}>{ru ? `СБП через ЮKassa · ${rub(product.priceRub)}` : `SBP via YooKassa · ${rub(product.priceRub)}`}</button>}
-                  {methods.sbp && <button type="button" aria-pressed={method === "sbp"} className={`chip ${method === "sbp" ? "chip-on" : ""}`} onClick={() => setMethod("sbp")}>{ru ? `${methods.yk ? "Перевод по номеру" : "СБП"} · ${rub(product.priceRub)}` : `${methods.yk ? "Transfer by phone" : "SBP"} · ${rub(product.priceRub)}`}</button>}
                   {methods.usdc && <button type="button" aria-pressed={method === "usdc"} className={`chip ${method === "usdc" ? "chip-on" : ""}`} onClick={() => setMethod("usdc")}>USDC · {usdc(product.priceUsdc)}</button>}
                 </div>
                 <label className="block text-sm">{ru ? "Ваша почта (для связи по заказу)" : "Your email (for order contact)"}

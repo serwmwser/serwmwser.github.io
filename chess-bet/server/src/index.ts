@@ -36,6 +36,7 @@ import { handleCommunities } from "./communities.js";
 import { handlePromos } from "./promos.js";
 import { handleShop, setShopVerifier } from "./shop.js";
 import { handleCposts } from "./cposts.js";
+import { handleMemberPay, setMemberPayNotify, startMemberPay } from "./memberpay.js"; // оплата членства в рублях
 import { handlePay, setChainVerifier, setReferrerResolver } from "./payments.js";
 
 const SITE_URL = process.env.SITE_URL || "https://himeet.online";
@@ -240,6 +241,15 @@ const publicProfile = (a: string) => {
 };
 setDmNotify((to, from) => { if (!isCallOnline(to)) pushTo(to, { title: "✉️ @" + from, body: "Новое сообщение / New message", url: "/messages/?with=" + encodeURIComponent(from), tag: "dm-" + from }); void tgNotify(to, `✉️ Новое сообщение от @${from}`, `✉️ New message from @${from}`, `dm:${from}:${Math.floor(Date.now() / 600000)}`, `${SITE_URL}/messages/?with=${encodeURIComponent(from)}`); }); // не чаще раза в 10 минут от одного отправителя
 setGuestNotify((to, name) => { if (!isCallOnline(to)) pushTo(to, { title: "💬 " + name, body: "Гость написал по вашей ссылке / A guest wrote via your link", url: "/u/?tab=chat", tag: "guest" }); void tgNotify(to, "💬 Гость написал по вашей ссылке", "💬 A guest wrote via your link", `guest:${Math.floor(Date.now() / 600000)}`, `${SITE_URL}/u/?tab=chat`); }); // не чаще раза в 10 минут
+// Оплачено участие в клубе (рубли): владельцу клуба и администраторам (push + Telegram)
+setMemberPayNotify((e) => {
+  const to = [...new Set([e.owner, ...e.admins].map((x) => String(x || "").toLowerCase()).filter(Boolean))];
+  const link = `${SITE_URL}/community/?c=${encodeURIComponent(e.slug)}`;
+  for (const a of to) {
+    pushTo(a, { title: "👥 Новый платный участник " + e.rub + " ₽", body: e.slug + (e.plan ? " · " + e.plan : ""), url: "/community/?c=" + encodeURIComponent(e.slug), tag: "member-" + e.slug + "-" + e.addr });
+    void tgNotify(a, `👥 Оплачено участие в клубе ${e.slug}: ${e.rub} ₽`, `👥 Club membership paid in ${e.slug}: ${e.rub} RUB`, "mem:" + e.slug + ":" + e.addr + ":" + Math.floor(Date.now() / 60000), link);
+  }
+});
 setMailNotify((to, from) => { if (!isCallOnline(to)) pushTo(to, { title: "📧 @" + from, body: "Новое письмо / New mail", url: "/u/?tab=mail", tag: "mail-" + from }); void tgNotify(to, `📧 Новое письмо от @${from}`, `📧 New mail from @${from}`, `mail:${from}:${Math.floor(Date.now() / 600000)}`, `${SITE_URL}/u/?tab=mail`); });
 setLegacy((a) => profiles.get(a) ?? null, (n) => nameOwner.get(n.toLowerCase()) ?? ""); // старые профили: перенос в соцсеть и занятые ники
 
@@ -584,6 +594,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/api/cposts" || url.pathname.startsWith("/api/cposts/")) { handleCposts(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/shop" || url.pathname.startsWith("/api/shop/")) { handleShop(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/promos" || url.pathname.startsWith("/api/promos/")) { handlePromos(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
+  if (url.pathname === "/api/communities/pay" || url.pathname === "/api/communities/pay-status") { handleMemberPay(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/communities" || url.pathname.startsWith("/api/communities/")) { handleCommunities(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/pay/")) { handlePay(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/corr/")) { handleCorr(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
@@ -959,6 +970,7 @@ async function main() {
   ev("GameCancelled", (id: bigint) => { open.delete(Number(id)); });
   setInterval(() => void sync().catch((e) => console.error("sync:", e.message)), Math.max(1000, Number(SYNC_MS) || 60_000));
   startTg();
+  startMemberPay(); // доводит до конца платежи ЮKassa, по которым покупатель не вернулся на сайт
   setFinishHook((i) => { recordGame(i); onGameFinished(i); }); // окончание бесплатной партии: задания, очки, турниры
   startTournaments();
   server.listen(Number(PORT), () => console.log(`server :${PORT}, oracle ${wallet.address}, fee ${feeBps} bps`));

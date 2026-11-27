@@ -37,6 +37,7 @@ function addCol(table: string, col: string, ddl: string) {
 addCol("communities", "visibility", "TEXT NOT NULL DEFAULT 'open'");
 addCol("community_members", "state", "TEXT NOT NULL DEFAULT 'active'");
 addCol("community_members", "plan", "INTEGER NOT NULL DEFAULT 0");
+addCol("community_plans", "price_rub", "INTEGER NOT NULL DEFAULT 0"); // цена в рублях (оплата через ЮKassa), 0 = нет
 addCol("community_members", "expires", "INTEGER NOT NULL DEFAULT 0");
 addCol("communities", "category", "TEXT NOT NULL DEFAULT 'other'");
 addCol("communities", "categories", "TEXT NOT NULL DEFAULT ''"); // до 3 категорий через запятую, первая главная
@@ -110,7 +111,7 @@ const clean = (s: unknown, max: number) =>
   String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
 
 type Row = { slug: string; name: string; descr: string; about: string; media: string; cover: string; owner: string; status: string; visibility: string; category: string; categories: string; language: string; created: number; updated: number };
-type Plan = { id: number; community: string; name: string; period: string; price_micro: number; active: number; trial_days: number };
+type Plan = { id: number; community: string; name: string; period: string; price_micro: number; active: number; trial_days: number; price_rub: number };
 type Mem = { community: string; addr: string; role: string; state: string; plan: number; expires: number; joined: number };
 
 const getC = (slug: string) => db.prepare("SELECT * FROM communities WHERE slug=?").get(slug) as Row | undefined;
@@ -197,8 +198,8 @@ const card = (c: Row, viewer: string) => {
   return {
     slug: c.slug, name: c.name, descr: c.descr, about: c.about, media: parseMedia(c.media), cover: c.cover, owner: ownerName(c.owner), members: countOf(c.slug),
     visibility: c.visibility, category: c.category, categories: (c.categories || c.category).split(",").filter(Boolean), role: roleOf(c, viewer), state: stateOf(c.slug, viewer), hidden: c.status !== "active", paused: !ownerActive(c), sub: c.owner === viewer ? subInfo(viewer) : null, created: c.created,
-    paid: plans.some((p) => p.price_micro > 0), trial: plans.some((p) => p.trial_days > 0), language: c.language, recent: recentOf(c.slug),
-    plans: plans.map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price_micro / 1e6, trial: p.trial_days })),
+    paid: plans.some((p) => p.price_micro > 0 || p.price_rub > 0), trial: plans.some((p) => p.trial_days > 0), language: c.language, recent: recentOf(c.slug),
+    plans: plans.map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price_micro / 1e6, priceRub: p.price_rub, trial: p.trial_days })),
   };
 };
 
@@ -306,6 +307,7 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (planId) {
         const pl = plansOf(slug).find((x) => x.id === planId);
         if (!pl) return bad("bad_plan");
+        if (pl.price_rub > 0 && pl.price_micro === 0) return bad("payment_required", 402); // рублёвый тариф оплачивается через /api/communities/pay
         if (pl.price_micro > 0 && pl.trial_days > 0 && !cur) { // пробный период: доступ на N дней без оплаты, один раз на человека
           db.prepare("INSERT INTO community_members(community,addr,role,state,plan,expires,joined) VALUES(?,?,'member','active',?,?,?)").run(slug, viewer, planId, Date.now() + pl.trial_days * DAY, Date.now());
           return out(200, { ok: true, community: card(c, viewer) });
@@ -361,9 +363,11 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       if (name.length < 2) return bad("bad_name");
       if (!(PERIODS as readonly string[]).includes(period)) return bad("bad_period");
       if (!Number.isFinite(price) || price < 0 || (price > 0 && price < MIN_MEMBER_PRICE) || price > MAX_PRICE_USDC) return bad("bad_price");
+      const rub = Math.floor(Number(m.price_rub) || 0); // цена в рублях: 0 или от 50 до 100 000
+      if (rub !== 0 && (rub < 50 || rub > 100000)) return bad("bad_price_rub");
       if (plansOf(slug).length >= MAX_PLANS) return bad("too_many_plans");
       const trial = Math.max(0, Math.min(30, Math.floor(Number(m.trial) || 0))); // пробный период, 0–30 дней
-      db.prepare("INSERT INTO community_plans(community,name,period,price_micro,trial_days,created) VALUES(?,?,?,?,?,?)").run(slug, name, period, Math.round(price * 1e6), trial, Date.now());
+      db.prepare("INSERT INTO community_plans(community,name,period,price_micro,trial_days,created,price_rub) VALUES(?,?,?,?,?,?,?)").run(slug, name, period, Math.round(price * 1e6), trial, Date.now(), rub);
       return out(200, { ok: true, community: card(c, viewer) });
     }
 

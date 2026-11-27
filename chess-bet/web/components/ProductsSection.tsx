@@ -189,13 +189,13 @@ export default function ProductsSection({ c }: { c: Community }) {
       {!items ? <p className="text-sm opacity-60">…</p> : items.length === 0 ? (
         <p className="text-sm opacity-70">{ru ? "Товаров пока нет." : "No products yet."}</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={items.length === 1 ? "grid gap-4" : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"}>
           {items.map((p) => (
-            <article key={p.id} className="card flex flex-col gap-3">
-              {p.image && <img src={mediaSrc(p.image)} alt="" className="aspect-[4/3] w-full rounded-xl object-cover" />}
+            <article key={p.id} className={`card flex flex-col gap-3 ${items.length === 1 ? "max-w-3xl" : ""}`}>
+              {p.image && <img src={mediaSrc(p.image)} alt={p.title} className="h-auto w-full rounded-xl" />}
               <div className="min-w-0 flex-1 space-y-1">
                 <h3 className="font-bold break-words">{p.title}</h3>
-                {p.descr && <p className="text-sm opacity-80 line-clamp-3 whitespace-pre-line">{p.descr}</p>}
+                {p.descr && <p className="text-sm opacity-80 whitespace-pre-line break-words">{p.descr}</p>}
                 <p className="text-sm font-semibold">
                   {[p.priceRub > 0 ? rub(p.priceRub) : "", p.priceUsdc > 0 ? usdc(p.priceUsdc) : ""].filter(Boolean).join(" · ")}
                 </p>

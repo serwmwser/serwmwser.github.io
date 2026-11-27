@@ -6,7 +6,7 @@ import { API_URL } from "./config";
 import { dropToken, ensureToken, getToken } from "./session";
 
 export type SUser = {
-  name: string; bio: string; country: string; link: string; avatar: string; banner: string; joined: number; langs?: string[]; interests?: string[];
+  name: string; bio: string; country: string; link: string; avatar: string; banner: string; joined: number; langs?: string[]; interests?: string[]; socials?: Record<string, string>;
   following: number; followers: number; posts: number; me: boolean; follows: boolean; followsMe?: boolean; presence?: number; addr?: string;
 };
 export type SPost = { id: number; edited: number; text: string; media: string[]; created: number; user: { name: string; avatar: string }; likes: number; liked: boolean; comments?: number };
@@ -60,7 +60,7 @@ export const INTERESTS: [string, string, string, string][] = [
 ];
 export const findPeople = (q: string, lang = "") => call<{ users: { name: string; avatar: string; bio: string; langs?: string[]; presence?: number }[] }>(`/api/people?q=${encodeURIComponent(q)}${lang ? `&lang=${encodeURIComponent(lang)}` : ""}`).then((r) => r.users);
 
-export const saveProfile = (token: string, p: Partial<Pick<SUser, "name" | "bio" | "country" | "link" | "avatar" | "banner" | "langs" | "interests">>) =>
+export const saveProfile = (token: string, p: Partial<Pick<SUser, "name" | "bio" | "country" | "link" | "avatar" | "banner" | "langs" | "interests" | "socials">>) =>
   call<{ user: SUser }>("/api/profile", { token, post: p }).then((r) => r.user);
 export const follow = (token: string, name: string, on: boolean) => call<{ user: SUser }>("/api/follow", { token, post: { name, on } }).then((r) => r.user);
 export const publish = (token: string, text: string, media: string[] = []) => call<{ post: SPost }>("/api/post", { token, post: { text, media } }).then((r) => r.post);
@@ -75,6 +75,7 @@ export function errText(e: unknown, ru: boolean): string {
     auth: ["Войдите, подписав сообщение кошельком", "Sign in with your wallet first"],
     bad_name: ["Ник: 3–20 символов, латиница, цифры и _", "Name: 3–20 chars, letters, digits and _"],
     name_taken: ["Этот ник занят", "This name is taken"],
+    bad_social: ["Не удалось распознать ссылку: укажите @имя или ссылку на профиль (Telegram, VK, X, Instagram)", "Could not read the link: enter @name or a profile link (Telegram, VK, X, Instagram)"],
     bad_link: ["Ссылка должна начинаться с https://", "Link must start with https://"],
     empty: ["Напишите текст или добавьте фото", "Write something or add a photo"],
     slow_down: ["Слишком часто, подождите минуту", "Too fast, wait a minute"],

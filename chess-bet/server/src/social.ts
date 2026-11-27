@@ -42,6 +42,7 @@ try { db.exec("ALTER TABLE posts ADD COLUMN edited INTEGER NOT NULL DEFAULT 0");
 try { db.exec("ALTER TABLE users ADD COLUMN langs TEXT NOT NULL DEFAULT ''"); } catch { /* колонка уже есть */ } // HiMeet langs
 try { db.exec("ALTER TABLE users ADD COLUMN interests TEXT NOT NULL DEFAULT ''"); } catch { /* колонка уже есть */ } // HiMeet interests
 try { db.exec("ALTER TABLE users ADD COLUMN seen_at INTEGER NOT NULL DEFAULT 0"); } catch { /* колонка уже есть */ } // HiMeet seen
+try { db.exec("ALTER TABLE users ADD COLUMN socials TEXT NOT NULL DEFAULT ''"); } catch { /* колонка уже есть */ } // визитка: Telegram, VK, X, Instagram
 // Активность: пишем в базу не чаще раза в минуту на пользователя
 const seenMap = new Map<string, number>();
 function touchSeen(addr: string): void {
@@ -119,7 +120,7 @@ setInterval(() => {
 const clean = (s: unknown, max: number) =>
   String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E]/g, "").trim().slice(0, max);
 
-type U = { addr: string; name: string; bio: string; country: string; link: string; avatar: string; banner: string; created: number; langs?: string; interests?: string; seen_at?: number };
+type U = { addr: string; name: string; bio: string; country: string; link: string; avatar: string; banner: string; created: number; langs?: string; interests?: string; seen_at?: number; socials?: string };
 const userByName = (n: string) => db.prepare("SELECT * FROM users WHERE name=? AND banned=0").get(n) as U | undefined;
 const userByAddr = (a: string) => db.prepare("SELECT * FROM users WHERE addr=? AND banned=0").get(a) as U | undefined;
 
@@ -177,10 +178,40 @@ const langsOf = (s: string | undefined) => String(s ?? "").split(",").filter((x)
 const INTEREST_CODES = new Set(["travel", "music", "movies", "books", "sport", "games", "chess", "food", "art", "tech", "photo", "nature"]);
 const intsOf = (s: string | undefined) => String(s ?? "").split(",").filter((x) => INTEREST_CODES.has(x));
 
+// Визитка: ссылки на Telegram (профиль или бот), VK, X и Instagram. Принимаем @имя, домен/имя или полную ссылку, храним только проверенный https-адрес.
+const SOC_KINDS = ["tg", "vk", "x", "ig"] as const;
+type SocKind = (typeof SOC_KINDS)[number];
+const SOC_RULES: Record<SocKind, { hosts: RegExp; name: RegExp; base: string }> = {
+  tg: { hosts: /^(t\.me|telegram\.me|telegram\.dog)$/i, name: /^[A-Za-z][A-Za-z0-9_]{4,31}$/, base: "https://t.me/" },
+  vk: { hosts: /^(m\.)?vk\.(com|ru)$/i, name: /^[A-Za-z0-9_.]{2,40}$/, base: "https://vk.com/" },
+  x: { hosts: /^(x|twitter)\.com$/i, name: /^[A-Za-z0-9_]{1,15}$/, base: "https://x.com/" },
+  ig: { hosts: /^(instagram\.com|instagr\.am)$/i, name: /^[A-Za-z0-9._]{1,30}$/, base: "https://instagram.com/" },
+};
+function normSocial(kind: SocKind, raw: string): string | null {
+  const r = SOC_RULES[kind];
+  const v = raw.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+  let name = v;
+  if (v.includes("/")) {
+    const [host, ...rest] = v.split("/");
+    if (!r.hosts.test(host)) return null;
+    name = (rest[0] || "").split(/[?#]/)[0];
+  } else if (r.hosts.test(v)) return null; // только домен без имени
+  name = name.replace(/^@/, "");
+  return r.name.test(name) ? r.base + name : null;
+}
+function socialsOf(s: string | undefined): Record<string, string> {
+  try {
+    const o = JSON.parse(s || "{}") as Record<string, unknown>;
+    const res: Record<string, string> = {};
+    for (const k of SOC_KINDS) { const v = o[k]; if (typeof v === "string" && v && normSocial(k, v) === v) res[k] = v; }
+    return res;
+  } catch { return {}; }
+}
+
 function profile(u: U, viewer: string) {
   const c = (sql: string, ...p: string[]) => (db.prepare(sql).get(...p) as { n: number }).n;
   return {
-    name: u.name, bio: u.bio, country: u.country, link: u.link, avatar: u.avatar, banner: u.banner, joined: u.created, langs: langsOf(u.langs), interests: intsOf(u.interests),
+    name: u.name, bio: u.bio, country: u.country, link: u.link, avatar: u.avatar, banner: u.banner, joined: u.created, langs: langsOf(u.langs), interests: intsOf(u.interests), socials: socialsOf(u.socials),
     following: c("SELECT COUNT(*) n FROM follows WHERE a=?", u.addr),
     followers: c("SELECT COUNT(*) n FROM follows WHERE b=?", u.addr),
     posts: c("SELECT COUNT(*) n FROM posts WHERE addr=? AND deleted=0", u.addr),
@@ -308,8 +339,22 @@ export async function handleSocial(req: http.IncomingMessage, res: http.ServerRe
       };
       const langs = Array.isArray(m.langs) ? Array.from(new Set((m.langs as unknown[]).map((x) => String(x))).values()).filter((x) => LANG_CODES.has(x)).slice(0, 8).join(",") : String(u.langs ?? "");
       const interests = Array.isArray(m.interests) ? Array.from(new Set((m.interests as unknown[]).map((x) => String(x))).values()).filter((x) => INTEREST_CODES.has(x)).slice(0, 8).join(",") : String(u.interests ?? "");
-      db.prepare("UPDATE users SET name=?, bio=?, country=?, link=?, avatar=?, banner=?, langs=?, interests=? WHERE addr=?")
-        .run(name, pick("bio", u.bio, 160), pick("country", u.country, 40), link, media("avatar", u.avatar), media("banner", u.banner), langs, interests, viewer);
+      let socials = u.socials || "";
+      if (m.socials && typeof m.socials === "object") {
+        const cur = socialsOf(u.socials);
+        const inp = m.socials as Record<string, unknown>;
+        for (const k of SOC_KINDS) {
+          if (inp[k] === undefined) continue;
+          const v = clean(inp[k], 120);
+          if (!v) { delete cur[k]; continue; }
+          const n = normSocial(k, v);
+          if (!n) return bad("bad_social");
+          cur[k] = n;
+        }
+        socials = JSON.stringify(cur);
+      }
+      db.prepare("UPDATE users SET name=?, bio=?, country=?, link=?, avatar=?, banner=?, langs=?, interests=?, socials=? WHERE addr=?")
+        .run(name, pick("bio", u.bio, 160), pick("country", u.country, 40), link, media("avatar", u.avatar), media("banner", u.banner), langs, interests, socials, viewer);
       return out(200, { ok: true, user: profile(userByAddr(viewer)!, viewer) });
     }
     if (p === "/api/follow") {

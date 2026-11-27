@@ -25,6 +25,7 @@ import { useApp } from "@/lib/ctx";
 import { shortAddr } from "@/lib/config";
 import { absoluteUrl, profileUrl, ROUTES } from "@/lib/urls";
 import LinkLogin from "@/components/LinkLogin";
+import { ShareLink, SocialLinks } from "@/components/SocialLinks";
 import { modMe } from "@/lib/mod";
 import { errText, follow, getFeed, getPosts, getUser, INTERESTS, LANGS, saveProfile, useSocial, type SPost, type SUser } from "@/lib/social";
 
@@ -58,7 +59,7 @@ function Profile() {
   const [edit, setEdit] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [f, setF] = useState({ name: "", bio: "", country: "", link: "", avatar: "", banner: "", langs: [] as string[], interests: [] as string[] }); // HiMeet langs
+  const [f, setF] = useState({ name: "", bio: "", country: "", link: "", avatar: "", banner: "", langs: [] as string[], interests: [] as string[], socials: { tg: "", vk: "", x: "", ig: "" } as Record<string, string> }); // HiMeet langs
 
   useEffect(() => {
     setMissing(false);
@@ -84,7 +85,7 @@ function Profile() {
     if (!u) return;
     try { const t = s.token || (await s.signIn()); setU(await follow(t, u.name, !u.follows)); } catch (e) { toast(errText(e, ru), "err"); }
   };
-  const startEdit = () => { if (!u) return; setF({ name: u.name, bio: u.bio, country: u.country, link: u.link, avatar: u.avatar, banner: u.banner, langs: u.langs ?? [], interests: u.interests ?? [] }); setEdit(true); };
+  const startEdit = () => { if (!u) return; setF({ name: u.name, bio: u.bio, country: u.country, link: u.link, avatar: u.avatar, banner: u.banner, langs: u.langs ?? [], interests: u.interests ?? [], socials: { tg: "", vk: "", x: "", ig: "", ...(u.socials ?? {}) } }); setEdit(true); };
   const autoEdit = useRef(false); // ссылка /u/?edit=1 из кабинета сразу открывает редактор
   useEffect(() => { if (u?.me && sp.get("edit") === "1" && !autoEdit.current) { autoEdit.current = true; startEdit(); } }, [u]); // eslint-disable-line react-hooks/exhaustive-deps
   const upImg = async (k: "avatar" | "banner", file?: File) => {
@@ -145,6 +146,10 @@ function Profile() {
           <h2 className="mt-2 text-xl font-extrabold">@{u.name}</h2>
           {!u.me && <div className="mt-0.5"><OnlineDot presence={u.presence} ru={ru} /></div>}
           {u.bio && <p className="mt-1 whitespace-pre-wrap break-words">{u.bio}</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <ShareLink url={absoluteUrl(profileUrl(u.name))} title={"@" + u.name + " · HiMeet"} />
+          </div>
+          <SocialLinks socials={u.socials} />
           {/* HiMeet match: совпадение с вами по языкам и интересам */}
           {!u.me && s.me && (() => {
             const mine = [...(s.me.langs ?? []).map((c) => "l:" + c), ...(s.me.interests ?? []).map((c) => "i:" + c)];
@@ -192,6 +197,14 @@ function Profile() {
             <label className="block text-sm">{ru ? "Ссылка (https://…)" : "Link (https://…)"}
               <input className="mt-1 w-full rounded-lg border px-3 py-2 bg-transparent" value={f.link} maxLength={120} onChange={(e) => setF({ ...f, link: e.target.value })} />
             </label>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div>{ru ? "Соцсети и контакты (визитка)" : "Socials & contacts (business card)"}</div>
+            {([["tg", "Telegram", ru ? "@имя или @имя_bot" : "@name or @name_bot"], ["vk", "VK", "vk.com/имя"], ["x", "X", "@name"], ["ig", "Instagram", "@name"]] as const).map(([k, label, ph]) => (
+              <input key={k} className="w-full rounded-lg border px-3 py-2 bg-transparent" placeholder={label + ": " + ph} maxLength={120}
+                value={f.socials[k] ?? ""} onChange={(e) => setF({ ...f, socials: { ...f.socials, [k]: e.target.value } })} />
+            ))}
+            <p className="text-xs opacity-60">{ru ? "Можно вставить своего Telegram-бота. Instagram (Meta) в России признан экстремистским и запрещён — указывайте на свой риск." : "You can add your Telegram bot. Instagram is banned in Russia (Meta is designated extremist) — add at your own risk."}</p>
           </div>
           <div className="text-sm">
             <div>{ru ? "Языки, на которых вы общаетесь" : "Languages you speak"}</div>

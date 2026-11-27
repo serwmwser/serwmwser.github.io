@@ -78,7 +78,7 @@ function OrderView({ order, onChange }: { order: Order; onChange: (o: Order) => 
           ) : (
             <p className="text-sm opacity-80">{ru ? "Файл уже скачан (одна оплата — одно скачивание) или недоступен. Если загрузка прервалась, напишите продавцу с кодом заказа." : "Download limit reached or the file is unavailable. Contact the seller."}</p>
           ))}
-          <p className="text-xs opacity-70">{ru ? "Сохраните эту ссылку: по ней файл можно скачать снова." : "Save this link: you can download the file again with it."}</p>
+          <p className="text-xs opacity-70">{ru ? "Сохраните эту ссылку: по ней открывается ваш заказ. Файл скачивается один раз." : "Save this link: it opens your order. The file can be downloaded once."}</p>
           <div className="flex flex-wrap items-center gap-2 text-xs break-all"><span>{link}</span><Copy text={link} label={ru ? "Ссылка на заказ" : "Order link"} /></div>
         </div>
       )}
@@ -151,7 +151,10 @@ function OrderView({ order, onChange }: { order: Order; onChange: (o: Order) => 
       )}
 
       {order.status !== "paid" && (
-        <p className="text-xs opacity-70 break-all">{ru ? "Ссылка на этот заказ (сохраните, чтобы вернуться):" : "Link to this order (save it to come back):"} {link}</p>
+        <div className="space-y-1 text-xs">
+          <p className="opacity-70">{ru ? "Ссылка на этот заказ (сохраните, чтобы вернуться):" : "Link to this order (save it to come back):"}</p>
+          <div className="flex flex-wrap items-center gap-2 break-all"><span>{link}</span><Copy text={link} label={ru ? "Ссылка на заказ" : "Order link"} /></div>
+        </div>
       )}
     </div>
   );

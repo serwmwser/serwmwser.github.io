@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/components/PageShell";
 import SellerInfo from "@/components/SellerInfo";
+import HowToBuy from "@/components/HowToBuy";
 import { useApp } from "@/lib/ctx";
 import { BASE } from "@/lib/urls";
 import { mediaSrc } from "@/lib/communities";
@@ -220,6 +221,7 @@ function View() {
         <div className="space-y-4">
           {product.image && <img src={mediaSrc(product.image)} alt="" className="w-full max-h-96 rounded-2xl object-cover" />}
           {product.descr && <div className="card text-sm leading-relaxed whitespace-pre-line">{product.descr}</div>}
+          <HowToBuy kind={product.kind} />
           <form onSubmit={buy} className="card space-y-3">
             <h2 className="font-bold">{ru ? "Купить без регистрации" : "Buy without signing up"}</h2>
             {!methods.usdc && !methods.yk ? (

@@ -8,6 +8,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import type http from "node:http";
 import Database from "better-sqlite3";
+import { SITE, ykCreate, ykGet, ykReady } from "./yookassa.js";
 
 const DB_FILE = process.env.SOCIAL_DB || "./data/social.db";
 const DIR = process.env.SHOP_DIR || "./data/private";
@@ -31,7 +32,7 @@ CREATE INDEX IF NOT EXISTS or_prod ON orders(product, status);
 CREATE UNIQUE INDEX IF NOT EXISTS or_tx ON orders(tx) WHERE tx <> '';
 `);
 // Колонки учёта выплат владельцам: добавляем, если таблица создана раньше
-for (const [c, t] of [["owner", "TEXT NOT NULL DEFAULT ''"], ["fee", "INTEGER NOT NULL DEFAULT 0"], ["share", "INTEGER NOT NULL DEFAULT 0"], ["payout_at", "INTEGER NOT NULL DEFAULT 0"]]) {
+for (const [c, t] of [["yk_id", "TEXT NOT NULL DEFAULT ''"], ["yk_url", "TEXT NOT NULL DEFAULT ''"], ["owner", "TEXT NOT NULL DEFAULT ''"], ["fee", "INTEGER NOT NULL DEFAULT 0"], ["share", "INTEGER NOT NULL DEFAULT 0"], ["payout_at", "INTEGER NOT NULL DEFAULT 0"]]) {
   try { db.exec(`ALTER TABLE orders ADD COLUMN ${c} ${t}`); } catch { /* колонка уже есть */ }
 }
 
@@ -53,7 +54,7 @@ let verify: Verify = async () => false;
 export function setShopVerifier(fn: Verify) { verify = fn; }
 
 type Product = { id: number; community: string; title: string; descr: string; image: string; kind: string; price_rub: number; price_micro: number; file: string; after: string; status: string; sold: number; created: number; updated: number };
-type Order = { id: string; product: number; email: string; method: string; status: string; code: string; amount: number; tx: string; payer: string; note: string; downloads: number; created: number; paid_at: number; owner: string; fee: number; share: number; payout_at: number };
+type Order = { id: string; product: number; email: string; method: string; status: string; code: string; amount: number; tx: string; payer: string; note: string; downloads: number; created: number; paid_at: number; owner: string; fee: number; share: number; payout_at: number; yk_id?: string; yk_url?: string };
 
 const clean = (s: unknown, max: number) => (typeof s === "string" ? s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ").replace(/[ \t]+/g, " ").trim().slice(0, max) : "");
 const cleanText = (s: unknown, max: number) => (typeof s === "string" ? s.replace(/\r/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, max) : "");
@@ -141,20 +142,37 @@ const publicProduct = (p: Product) => ({
 const adminProduct = (p: Product) => ({ ...publicProduct(p), status: p.status, after: p.after, created: p.created, updated: p.updated });
 
 /** Реквизиты для оплаты заказа (только пока заказ не оплачен) */
-const payInfo = (o: Order) => o.method === "sbp"
+const payInfo = (o: Order) => o.method === "yk"
+  ? { method: "yk", url: o.yk_url || "", amountRub: o.amount, comment: o.code }
+  : o.method === "sbp"
   ? { method: "sbp", phone: SBP_PHONE, bank: SBP_BANK, holder: SBP_HOLDER, amountRub: o.amount, comment: o.code }
   : { method: "usdc", to: PAY_TO, token: PAY_TOKEN, network: "Polygon", amount: o.amount / 1e6, comment: o.code };
 
 const publicOrder = (o: Order, p: Product | undefined) => {
   const paid = o.status === "paid";
   return {
-    id: o.id, code: o.code, method: o.method, status: o.status, amount: o.method === "sbp" ? o.amount : o.amount / 1e6, created: o.created, paid_at: o.paid_at,
+    id: o.id, code: o.code, method: o.method, status: o.status, amount: o.method === "usdc" ? o.amount / 1e6 : o.amount, created: o.created, paid_at: o.paid_at,
     product: p ? { id: p.id, title: p.title, image: p.image, kind: p.kind, community: p.community } : null,
     pay: o.status === "new" || o.status === "claimed" ? payInfo(o) : null,
     after: paid && p ? p.after : "",
     canDownload: paid && !!p && !!p.file && o.downloads < MAX_DOWNLOADS,
   };
 };
+
+/** Сверка заказа с ЮKassa: оплачен → фиксируем; отменён → закрываем. Сумма и номер заказа должны совпасть */
+async function syncYk(o: Order): Promise<void> {
+  if (!o.yk_id || o.status === "paid") return;
+  try {
+    const r = await ykGet(o.yk_id);
+    if (r.orderId !== o.id) return;
+    if (r.status === "succeeded" && r.paid && r.rub === o.amount) {
+      const cur = getO(o.id);
+      if (cur && cur.status !== "paid") { try { finalize(cur, "yk:" + o.yk_id, ""); } catch { /* уже учтён */ } }
+    } else if (r.status === "canceled") {
+      db.prepare("UPDATE orders SET status='rejected' WHERE id=? AND status<>'paid'").run(o.id);
+    }
+  } catch { /* повторим при следующем запросе */ }
+}
 
 /** Маршруты /api/shop/* */
 export async function handleShop(req: http.IncomingMessage, res: http.ServerResponse, url: URL, viewer: string): Promise<boolean> {
@@ -192,19 +210,39 @@ export async function handleShop(req: http.IncomingMessage, res: http.ServerResp
       if (pr.kind === "digital" && !pr.file) return bad("not_ready");
       const email = clean(m.email, 254).toLowerCase();
       if (!EMAIL_RE.test(email)) return bad("bad_email");
-      const method = m.method === "usdc" ? "usdc" : "sbp";
+      const method = m.method === "usdc" ? "usdc" : m.method === "yk" ? "yk" : "sbp";
+      if (method === "yk" && (!ykReady() || pr.price_rub <= 0)) return bad("method_unavailable");
       if (method === "sbp" && (!SBP_PHONE || pr.price_rub <= 0)) return bad("method_unavailable");
       if (method === "usdc" && (!/^0x[a-f0-9]{40}$/.test(PAY_TO) || pr.price_micro <= 0)) return bad("method_unavailable");
       const id = crypto.randomBytes(12).toString("hex");
-      const o: Order = { id, product: pr.id, email, method, status: "new", code: codeOf(), amount: method === "sbp" ? pr.price_rub : pr.price_micro, tx: "", payer: "", note: "", downloads: 0, created: Date.now(), paid_at: 0, owner: "", fee: 0, share: 0, payout_at: 0 };
+      const o: Order = { id, product: pr.id, email, method, status: "new", code: codeOf(), amount: method === "usdc" ? pr.price_micro : pr.price_rub, tx: "", payer: "", note: "", downloads: 0, created: Date.now(), paid_at: 0, owner: "", fee: 0, share: 0, payout_at: 0 };
       db.prepare("INSERT INTO orders(id,product,email,method,status,code,amount,created) VALUES(?,?,?,?,?,?,?,?)").run(o.id, o.product, o.email, o.method, o.status, o.code, o.amount, o.created);
+      if (method === "yk") {
+        try {
+          const yk = await ykCreate(o.id, o.amount, `Заказ ${o.code}: ${pr.title}`, `${SITE}/product/?order=${o.id}`);
+          db.prepare("UPDATE orders SET yk_id=?, yk_url=? WHERE id=?").run(yk.id, yk.url, o.id);
+          o.yk_id = yk.id; o.yk_url = yk.url;
+        } catch { db.prepare("UPDATE orders SET status='rejected' WHERE id=?").run(o.id); return bad("pay_unavailable", 502); }
+      }
       return out(200, { ok: true, order: publicOrder(o, pr) });
     }
     if (req.method === "GET" && p === "/api/shop/order") {
       if (limited("sg:" + ip, 240, 3600000)) return bad("slow_down", 429);
-      const o = getO(clean(url.searchParams.get("id"), 40));
+      let o = getO(clean(url.searchParams.get("id"), 40));
       if (!o) return bad("not_found", 404);
+      if (o.method === "yk" && o.status !== "paid" && o.yk_id) { await syncYk(o); o = getO(o.id) as Order; }
       return out(200, { ok: true, order: publicOrder(o, getP(o.product)) });
+    }
+    // ЮKassa: уведомление о платеже. Статус перепроверяем запросом к ЮKassa, на любое уведомление отвечаем 200
+    if (req.method === "POST" && p === "/api/shop/yk/webhook") {
+      try {
+        const m = await readBody(req);
+        const obj = (m.object || {}) as Record<string, unknown>;
+        const id = clean(obj.id, 64);
+        const o = id ? (db.prepare("SELECT * FROM orders WHERE yk_id=?").get(id) as Order | undefined) : undefined;
+        if (o && o.status !== "paid") await syncYk(o);
+      } catch { /* ЮKassa повторит уведомление */ }
+      res.writeHead(200); res.end(); return true;
     }
     // СБП: покупатель нажал «Я оплатил»
     if (req.method === "POST" && p === "/api/shop/order/claim") {
@@ -326,7 +364,7 @@ export async function handleShop(req: http.IncomingMessage, res: http.ServerResp
         ? db.prepare("SELECT o.* FROM orders o JOIN products p ON p.id=o.product WHERE p.community=? ORDER BY o.created DESC LIMIT 300").all(slug)
         : db.prepare("SELECT * FROM orders ORDER BY created DESC LIMIT 300").all()) as Order[];
       const titles = new Map((db.prepare("SELECT id,title,community FROM products").all() as { id: number; title: string; community: string }[]).map((r) => [r.id, r]));
-      const unit = (o: Order, v: number) => (o.method === "sbp" ? v : v / 1e6);
+      const unit = (o: Order, v: number) => (o.method === "usdc" ? v / 1e6 : v);
       return out(200, {
         ok: true,
         items: rows.map((o) => ({
@@ -366,7 +404,7 @@ export async function handleShop(req: http.IncomingMessage, res: http.ServerResp
         const z = () => ({ pending: 0, paid: 0, fee: 0, gross: 0, count: 0 });
         const r = { rub: z(), usdc: z() };
         for (const x of rows) {
-          const t = x.method === "sbp" ? r.rub : r.usdc, d = x.method === "sbp" ? 1 : 1e6;
+          const t = x.method === "usdc" ? r.usdc : r.rub, d = x.method === "usdc" ? 1e6 : 1;
           if (x.done) t.paid += x.share / d; else t.pending += x.share / d;
           t.fee += x.fee / d; t.gross += x.gross / d; t.count += x.n;
         }

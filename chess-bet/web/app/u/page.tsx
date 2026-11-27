@@ -26,6 +26,7 @@ import { shortAddr } from "@/lib/config";
 import { absoluteUrl, profileUrl, ROUTES } from "@/lib/urls";
 import LinkLogin from "@/components/LinkLogin";
 import { ShareLink, SocialLinks } from "@/components/SocialLinks";
+import QrButton from "@/components/QrCode";
 import { modMe } from "@/lib/mod";
 import { errText, follow, getFeed, getPosts, getUser, INTERESTS, LANGS, saveProfile, useSocial, type SPost, type SUser } from "@/lib/social";
 
@@ -147,7 +148,8 @@ function Profile() {
           {!u.me && <div className="mt-0.5"><OnlineDot presence={u.presence} ru={ru} /></div>}
           {u.bio && <p className="mt-1 whitespace-pre-wrap break-words">{u.bio}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <ShareLink url={absoluteUrl(profileUrl(u.name))} title={"@" + u.name + " · HiMeet"} />
+            <ShareLink url={absoluteUrl("/@" + u.name)} title={"@" + u.name + " · HiMeet"} />
+            <QrButton url={absoluteUrl("/@" + u.name)} name={u.name} />
           </div>
           <SocialLinks socials={u.socials} />
           {/* HiMeet match: совпадение с вами по языкам и интересам */}

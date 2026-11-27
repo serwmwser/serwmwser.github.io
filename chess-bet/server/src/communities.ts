@@ -228,10 +228,11 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
     if (req.method === "GET" && p === "/api/communities/categories") return out(200, { ok: true, items: CATEGORIES, languages: LANGUAGES });
     if (req.method === "GET" && p === "/api/communities/pricing") {
       const founders = (db.prepare("SELECT COUNT(*) AS n FROM creator_subs WHERE source='founder'").get() as { n: number }).n;
+      const made = (db.prepare("SELECT COUNT(*) AS n FROM communities").get() as { n: number }).n; // места считаем по числу сообществ
       const mine = viewer ? subInfo(viewer) : null;
       const trialAvailable = !mine; // бесплатный период ещё не использован
       return out(200, {
-        ok: true, ...publicPricing(), founderSlots: FOUNDER_SLOTS, founderLeft: Math.max(0, FOUNDER_SLOTS - founders), founderDays: FOUNDER_DAYS, trialDays: TRIAL_DAYS,
+        ok: true, ...publicPricing(), founderSlots: FOUNDER_SLOTS, founderLeft: Math.max(0, FOUNDER_SLOTS - Math.max(founders, made)), founderDays: FOUNDER_DAYS, trialDays: TRIAL_DAYS,
         sub: mine, trialAvailable, canCreate: !REQUIRE_PAYMENT || isAdm(viewer) || (pricingReady() && !!viewer && (hasCreatorPlan(viewer) || trialAvailable)),
       });
     }

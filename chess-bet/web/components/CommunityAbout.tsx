@@ -75,12 +75,12 @@ export default function CommunityAbout({ c, onChange }: { c: Community; onChange
   const text = c.about || c.descr;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
+    <div className="hm-community-layout grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
       {/* Левая колонка: галерея и описание */}
-      <section className="space-y-4 min-w-0">
+      <section className="hm-community-main space-y-4 min-w-0">
         {cur ? (
           <div className="space-y-2">
-            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black/10 dark:bg-white/10">
+            <div className="hm-community-gallery relative aspect-video w-full overflow-hidden rounded-2xl bg-black/10 dark:bg-white/10">
               {cur.type === "video" ? (
                 <iframe
                   key={cur.url} src={cur.url} title={c.name} loading="lazy" className="absolute inset-0 h-full w-full border-0"
@@ -130,7 +130,7 @@ export default function CommunityAbout({ c, onChange }: { c: Community; onChange
       </section>
 
       {/* Правая колонка: карточка вступления */}
-      <aside className="card !p-0 overflow-hidden lg:sticky lg:top-4">
+      <aside className="hm-community-sidebar card !p-0 overflow-hidden lg:sticky lg:top-4">
         <div className="relative aspect-[16/9] w-full" style={c.cover ? undefined : { background: gradientFor(c.slug) }}>
           {c.cover && (
             // eslint-disable-next-line @next/next/no-img-element

@@ -28,8 +28,8 @@ export default function CommunityCard({ c, cats }: { c: Community; cats: Record<
   const tags = c.categories.map((s) => cats[s]).filter(Boolean).slice(0, 3);
 
   return (
-    <Link href={communityUrl(c.slug)} className="card !p-0 overflow-hidden flex flex-col hover:shadow-glow transition group" aria-label={c.name}>
-      <div className="relative aspect-[16/9] w-full" style={c.cover ? undefined : { background: gradientFor(c.slug) }}>
+    <Link href={communityUrl(c.slug)} className="hm-community-card card !p-0 overflow-hidden flex flex-col transition group" aria-label={c.name}>
+      <div className="hm-community-cover relative aspect-[16/9] w-full" style={c.cover ? undefined : { background: gradientFor(c.slug) }}>
         {c.cover && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={mediaSrc(c.cover)} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
@@ -39,7 +39,7 @@ export default function CommunityCard({ c, cats }: { c: Community; cats: Record<
           {c.visibility === "closed" && <span className="chip !py-0.5 !px-2 text-xs bg-black/60 text-white">🔒 {ru ? "Закрытое" : "Private"}</span>}
         </span>
       </div>
-      <div className="p-3 sm:p-4 flex flex-col gap-2 grow">
+      <div className="hm-community-card-body p-4 sm:p-5 flex flex-col gap-3 grow">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-black/5 dark:bg-white/10 text-xl" aria-hidden>{main?.icon || "✨"}</span>
           <h3 className="font-bold leading-tight break-words group-hover:underline">{c.name}</h3>

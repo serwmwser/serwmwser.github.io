@@ -36,6 +36,7 @@ import { handleCommunities } from "./communities.js";
 import { handlePromos } from "./promos.js";
 import { handleShop, setShopVerifier } from "./shop.js";
 import { handleCposts } from "./cposts.js";
+import { handleSso } from "./sso.js"; // единый вход для внешних досок (ads-ru)
 import { handleMemberPay, setMemberPayNotify, startMemberPay } from "./memberpay.js"; // оплата членства в рублях
 import { handlePay, setChainVerifier, setReferrerResolver } from "./payments.js";
 
@@ -591,6 +592,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/api/report" || url.pathname.startsWith("/api/mod/")) { handleMod(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/calls/")) { handleCalls(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname.startsWith("/api/links/")) { handleLinks(req, res, url).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
+  if (url.pathname === "/api/sso/ads-ru" || url.pathname === "/api/sso/verify") { handleSso(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/cposts" || url.pathname.startsWith("/api/cposts/")) { handleCposts(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/shop" || url.pathname.startsWith("/api/shop/")) { handleShop(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }
   if (url.pathname === "/api/promos" || url.pathname.startsWith("/api/promos/")) { handlePromos(req, res, url, viewerOf(req)).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); return; }

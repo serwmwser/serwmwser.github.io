@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useConnectModal } from "thirdweb/react";
 import PageShell from "@/components/PageShell";
 import AdCard from "@/components/AdCard";
+import AdsRuBoard from "@/components/AdsRuBoard";
 import AdForm from "@/components/AdForm";
 import { chain, client } from "@/lib/config";
 import { useApp } from "@/lib/ctx";
@@ -16,7 +17,7 @@ import { wallets } from "@/components/Header";
 import { payError, useAdPay } from "@/lib/adpay";
 import { EN, RU } from "./content";
 
-type Tab = "list" | "new" | "mine";
+type Tab = "list" | "ru" | "new" | "mine";
 const EMPTY: AdFilters = { kind: "", country: "", city: "", q: "" };
 
 export default function AdsPage() {
@@ -80,7 +81,7 @@ export default function AdsPage() {
   const cities = places.find((p) => p.slug === filters.country.toLowerCase())?.cities ?? [];
   const inp = "w-full rounded-2xl bg-black/5 dark:bg-white/10 px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500";
   const chip = (on: boolean) => `chip ${on ? "chip-on" : ""}`;
-  const tabs: [Tab, string][] = [["list", ru ? "Объявления" : "Ads"], ["new", ru ? "Подать объявление" : "Post an ad"], ["mine", ru ? "Мои объявления" : "My ads"]];
+  const tabs: [Tab, string][] = [["list", ru ? "Объявления" : "Ads"], ["ru", ru ? "🇷🇺 Россия" : "🇷🇺 Russia"], ["new", ru ? "Подать объявление" : "Post an ad"], ["mine", ru ? "Мои объявления" : "My ads"]];
 
   const guest = <LoginPrompt text={ru ? "Чтобы подавать объявления и писать продавцам, подключите кошелёк (подпись бесплатна)." : "Connect your wallet to post ads and message sellers (signing is free)."} />;
   const needProfile = (
@@ -170,6 +171,8 @@ export default function AdsPage() {
           {next !== null && <button type="button" className="btn btn-ghost w-full" disabled={loading} onClick={() => void load(filters, next)}>{loading ? "…" : ru ? "Показать ещё" : "Show more"}</button>}
         </>
       )}
+
+      {tab === "ru" && <AdsRuBoard />}
 
       {tab === "new" && (!token ? guest : !me ? needProfile : (
         <>

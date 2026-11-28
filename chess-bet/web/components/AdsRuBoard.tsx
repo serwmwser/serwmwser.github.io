@@ -9,7 +9,7 @@ import { ADS_RU_SSO, ADS_RU_URL, adsRuPass } from "@/lib/adsru";
 
 /** Российская доска объявлений внутри раздела «Объявления». С единым входом: вошли в HiMeet, значит вошли и на доске. */
 export default function AdsRuBoard() {
-  const { lang } = useApp();
+  const { lang, toast } = useApp();
   const { token, me } = useSocial();
   const ru = lang === "ru";
   const [loaded, setLoaded] = useState(false);
@@ -24,11 +24,37 @@ export default function AdsRuBoard() {
     return () => { alive = false; };
   }, [token, me]);
 
+  const [opening, setOpening] = useState(false);
+  const canOpen = !ADS_RU_SSO || (!!token && !!me);
+
+  /** Открыть доску в новой вкладке: пропуск одноразовый, поэтому для вкладки берём свежий */
+  async function openSite() {
+    if (opening) return;
+    if (!ADS_RU_SSO) { window.open(ADS_RU_URL, "_blank", "noopener"); return; }
+    if (!token) return;
+    setOpening(true);
+    const w = window.open("", "_blank"); // окно открываем сразу, чтобы браузер его не заблокировал
+    try {
+      const t = await adsRuPass(token);
+      const url = `${ADS_RU_URL}/sso?t=${encodeURIComponent(t)}`;
+      if (w) { w.opener = null; w.location.href = url; } else window.location.assign(url);
+    } catch {
+      if (w) w.close();
+      toast(ru ? "Не удалось открыть сайт. Попробуйте ещё раз" : "Could not open the site. Please try again", "err");
+    } finally {
+      setOpening(false);
+    }
+  }
+
   const head = (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-extrabold">🇷🇺 {ru ? "Доска объявлений России" : "Classifieds board of Russia"}</h2>
-        {src && <a href={src} target="_blank" rel="noopener" className="btn btn-ghost !py-1.5 text-sm">{ru ? "Открыть в отдельной вкладке ↗" : "Open in a new tab ↗"}</a>}
+        {canOpen && (
+          <button type="button" onClick={openSite} disabled={opening} className="btn btn-primary !px-5 !py-2 text-sm font-bold">
+            {opening ? (ru ? "Открываем…" : "Opening…") : (ru ? "Открыть сайт ↗" : "Open site ↗")}
+          </button>
+        )}
       </div>
       <p className="text-xs opacity-70">{ru ? "Объявления для России. Вход общий с HiMeet: отдельная регистрация и SMS не нужны. Мировая доска с оплатой в USDC находится на вкладке «Объявления»." : "Classifieds for Russia. Single sign-in with HiMeet: no separate sign-up or SMS. The worldwide board with USDC payments is on the “Ads” tab."}</p>
     </>
@@ -79,7 +105,7 @@ export default function AdsRuBoard() {
             className="block w-full" style={{ height: "85vh", minHeight: 560, border: 0 }} referrerPolicy="strict-origin-when-cross-origin" allow="clipboard-write" />
         )}
       </div>
-      <p className="text-xs opacity-60">{ru ? "Если окно не загрузилось, откройте доску в отдельной вкладке." : "If the window does not load, open the board in a new tab."}</p>
+      <p className="text-xs opacity-60">{ru ? "Если окно не загрузилось, нажмите «Открыть сайт»." : "If the window does not load, press “Open site”."}</p>
     </section>
   );
 }

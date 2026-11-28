@@ -594,3 +594,112 @@ main p {
   .hm-community-plan-prices { padding: 10px; }
   .hm-community-plan-prices { grid-template-columns: minmax(0,1fr); }
 }
+
+
+
+/* HiMeet Creator Studio — dashboard header */
+.hm-creator-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(20px, 4vw, 34px);
+  border-radius: 25px;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(105, 91, 255, .48), transparent 43%),
+    radial-gradient(ellipse at 5% 100%, rgba(0, 204, 170, .22), transparent 45%),
+    linear-gradient(125deg, #151b35 0%, #252653 52%, #34306e 100%);
+  box-shadow: 0 16px 42px rgba(32, 35, 83, .20);
+}
+.hm-creator-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.hm-creator-eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #b8b8ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+.hm-creator-hero h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(25px, 4vw, 36px);
+  font-weight: 850;
+  line-height: 1.12;
+  letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+}
+.hm-creator-hero p {
+  margin: 9px 0 0;
+  color: rgba(255,255,255,.72);
+  font-size: 13px;
+}
+.hm-creator-status {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+}
+.hm-creator-status.is-open { color: #9af0d0; }
+.hm-creator-status.is-closed { color: #ffd59b; }
+.hm-creator-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+.hm-creator-metric {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 10px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px;
+  background: rgba(255,255,255,.09);
+  backdrop-filter: blur(8px);
+}
+.hm-creator-metric > span {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.13);
+  color: #c8c5ff;
+  font-size: 18px;
+}
+.hm-creator-metric strong {
+  color: #fff;
+  font-size: 23px;
+  line-height: 1;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+.hm-creator-metric small {
+  margin-top: 4px;
+  color: rgba(255,255,255,.68);
+  font-size: 11px;
+}
+.hm-creator-section-title {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+@media (max-width: 520px) {
+  .hm-creator-hero-top { flex-direction: column; }
+  .hm-creator-metrics { gap: 7px; margin-top: 22px; }
+  .hm-creator-metric { grid-template-columns: 1fr; gap: 5px; padding: 11px 9px; }
+  .hm-creator-metric > span { width: 28px; height: 28px; grid-row: auto; }
+  .hm-creator-metric strong { font-size: 20px; }
+  .hm-creator-metric small { font-size: 10px; }
+}

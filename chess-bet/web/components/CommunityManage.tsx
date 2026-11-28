@@ -95,7 +95,36 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
 
   return (
     <section className="hm-community-manage card space-y-5" aria-label={ru ? "Управление сообществом" : "Manage community"}>
-      <h2 className="text-lg font-bold">⚙ {ru ? "Управление сообществом" : "Manage community"}</h2>
+      <div className="hm-creator-hero">
+        <div className="hm-creator-hero-top">
+          <div>
+            <span className="hm-creator-eyebrow">{ru ? "HIMEET · CREATOR STUDIO" : "HIMEET · CREATOR STUDIO"}</span>
+            <h2>{name || (ru ? "Моё сообщество" : "My community")}</h2>
+            <p>{ru ? "Ваша площадка. Ваша аудитория. Ваши правила." : "Your space. Your audience. Your rules."}</p>
+          </div>
+          <span className={`hm-creator-status ${vis === "open" ? "is-open" : "is-closed"}`}>
+            {vis === "open" ? (ru ? "● Открыто" : "● Public") : (ru ? "● Закрыто" : "● Private")}
+          </span>
+        </div>
+        <div className="hm-creator-metrics">
+          <div className="hm-creator-metric">
+            <span>✦</span>
+            <strong>{c.plans.length}</strong>
+            <small>{ru ? "Тарифов" : "Plans"}</small>
+          </div>
+          <div className="hm-creator-metric">
+            <span>▧</span>
+            <strong>{media.length}</strong>
+            <small>{ru ? "Материалов" : "Media items"}</small>
+          </div>
+          <div className="hm-creator-metric">
+            <span>♧</span>
+            <strong>{reqs.length}</strong>
+            <small>{ru ? "Заявок" : "Requests"}</small>
+          </div>
+        </div>
+      </div>
+      <h3 className="hm-creator-section-title">⚙ {ru ? "Настройки сообщества" : "Community settings"}</h3>
 
       <div className="space-y-3">
         <label className="block space-y-1 text-sm"><span className="font-semibold">{ru ? "Название" : "Name"}</span>

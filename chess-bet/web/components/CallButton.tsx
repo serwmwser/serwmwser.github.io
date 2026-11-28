@@ -50,18 +50,19 @@ export default function CallButton({ name, className = "" }: { name: string; cla
     : st.busy ? (ru ? "Разговаривает" : "On a call")
     : (ru ? "Позвонить" : "Call");
 
+  const start = (video: boolean) => {
+    if (call.status === "off") { toast(ru ? "Звонки подключаются, попробуйте через пару секунд" : "Calls are connecting, try again in a moment", "info"); return; }
+    void callUser(name, video);
+  };
+
   return (
-    <button
-      type="button"
-      className={"btn btn-ghost " + className}
-      disabled={disabled}
-      title={ru ? "Голосовой звонок" : "Voice call"}
-      onClick={() => {
-        if (call.status === "off") { toast(ru ? "Звонки подключаются, попробуйте через пару секунд" : "Calls are connecting, try again in a moment", "info"); return; }
-        void callUser(name);
-      }}
-    >
-      📞 {label}
-    </button>
+    <>
+      <button type="button" className={"btn btn-ghost " + className} disabled={disabled} title={ru ? "Голосовой звонок" : "Voice call"} onClick={() => start(false)}>
+        📞 {label}
+      </button>
+      <button type="button" className={"btn btn-primary " + className} disabled={disabled} title={ru ? "Видеозвонок" : "Video call"} onClick={() => start(true)}>
+        📹 {ru ? "Видео" : "Video"}
+      </button>
+    </>
   );
 }

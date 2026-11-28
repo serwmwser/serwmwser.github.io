@@ -9,12 +9,12 @@ export const CALL_URL = WS_URL.replace(/\/ws$/, "/call");
 export type CallStatus = "off" | "idle" | "calling" | "incoming" | "connecting" | "active";
 export type Peer = { name: string; avatar: string };
 export type CallState = {
-  status: CallStatus; peer: Peer | null; id: string; secs: number; muted: boolean;
+  status: CallStatus; peer: Peer | null; id: string; secs: number; muted: boolean; cam: boolean; peerCam: boolean; localVideo: MediaStream | null; remoteVideo: MediaStream | null;
   error: string;                                   // код последней ошибки (для тоста)
   ended: { reason: string; secs: number; at: number } | null; // как закончился последний звонок
 };
 
-const INIT: CallState = { status: "off", peer: null, id: "", secs: 0, muted: false, error: "", ended: null };
+const INIT: CallState = { status: "off", peer: null, id: "", secs: 0, muted: false, cam: false, peerCam: false, localVideo: null, remoteVideo: null, error: "", ended: null };
 let state: CallState = INIT;
 const listeners = new Set<() => void>();
 function set(p: Partial<CallState>) { state = { ...state, ...p }; listeners.forEach((l) => l()); }
@@ -43,6 +43,9 @@ let audio: HTMLAudioElement | null = null;
 let ringTimer: ReturnType<typeof setInterval> | null = null;
 let actx: AudioContext | null = null;
 let iAmCaller = false;
+let vTx: RTCRtpTransceiver | null = null;      // видеоканал, создаётся сразу с соединением; камера включается подменой дорожки
+let camTrack: MediaStreamTrack | null = null; // моя включённая камера
+let startCam: MediaStreamTrack | null = null; // камера, запрошенная при видеозвонке (включится после соединения)
 
 const send = (o: unknown) => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(o)); };
 
@@ -107,26 +110,34 @@ function cleanup() {
   if (pc) { pc.ontrack = null; pc.onicecandidate = null; pc.onconnectionstatechange = null; try { pc.close(); } catch { /* уже закрыто */ } pc = null; }
   if (local) { local.getTracks().forEach((t) => t.stop()); local = null; }
   if (audio) { audio.srcObject = null; }
+  if (camTrack) { camTrack.stop(); camTrack = null; }
+  if (startCam) { startCam.stop(); startCam = null; }
+  vTx = null;
   pending = [];
 }
 function finish(reason: string, secs: number) {
   cleanup();
-  set({ status: ws && ws.readyState === WebSocket.OPEN ? "idle" : wantOn ? "idle" : "off", peer: null, id: "", secs: 0, muted: false, ended: { reason, secs, at: Date.now() } });
+  set({ status: ws && ws.readyState === WebSocket.OPEN ? "idle" : wantOn ? "idle" : "off", peer: null, id: "", secs: 0, muted: false, cam: false, peerCam: false, localVideo: null, remoteVideo: null, ended: { reason, secs, at: Date.now() } });
 }
 
 // ---------- WebRTC ----------
-async function mic(): Promise<boolean> {
+const CAM: MediaTrackConstraints = { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 }, facingMode: "user" };
+async function mic(video = false): Promise<boolean> {
   try {
-    local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+    local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: video ? CAM : false });
+    const vt = local.getVideoTracks()[0];
+    if (vt) { local.removeTrack(vt); startCam = vt; } // камеру подключим к видеоканалу после соединения
     return true;
-  } catch { set({ error: "mic" }); return false; }
+  } catch { set({ error: video ? "cam" : "mic" }); return false; }
 }
 
 function makePc(id: string) {
   pc = new RTCPeerConnection({ iceServers: ice });
   local?.getTracks().forEach((t) => pc!.addTrack(t, local!));
+  vTx = pc.addTransceiver("video", { direction: "sendrecv" });
   pc.onicecandidate = (e) => { if (e.candidate) send({ t: "signal", id, data: { type: "candidate", candidate: e.candidate.toJSON() } }); };
   pc.ontrack = (e) => {
+    if (e.track.kind === "video") { set({ remoteVideo: e.streams[0] ?? new MediaStream([e.track]) }); return; }
     audio = audio ?? new Audio();
     audio.autoplay = true;
     audio.srcObject = e.streams[0];
@@ -137,6 +148,7 @@ function makePc(id: string) {
     if (s === "connected") {
       if (connTimer) { clearTimeout(connTimer); connTimer = null; }
       set({ status: "active" });
+      void attachStartCam();
       if (!pingTimer) { send({ t: "ping", id }); pingTimer = setInterval(() => send({ t: "ping", id }), 5000); } // секунды идут, пока связь живая
     } else if (s === "disconnected" || s === "failed") {
       if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
@@ -147,7 +159,7 @@ function makePc(id: string) {
   connTimer = setTimeout(() => { if (state.status === "connecting") { set({ error: "network" }); hangup(); } }, 25000);
 }
 
-async function onSignal(id: string, data: { type?: string; sdp?: string; candidate?: RTCIceCandidateInit }) {
+async function onSignal(id: string, data: { type?: string; sdp?: string; candidate?: RTCIceCandidateInit; on?: boolean }) {
   if (!pc || id !== state.id) return;
   try {
     if (data.type === "offer" && data.sdp) {
@@ -161,6 +173,8 @@ async function onSignal(id: string, data: { type?: string; sdp?: string; candida
       await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
       for (const c of pending) await pc.addIceCandidate(c).catch(() => {});
       pending = [];
+    } else if (data.type === "cam") {
+      set({ peerCam: !!data.on });
     } else if (data.type === "candidate" && data.candidate) {
       if (pc.remoteDescription) await pc.addIceCandidate(data.candidate).catch(() => {});
       else pending.push(data.candidate);
@@ -236,10 +250,10 @@ export function stopCalls() {
 
 // ---------- действия ----------
 /** Позвонить пользователю по нику. Только после нажатия пользователя (нужен микрофон) */
-export async function callUser(name: string) {
+export async function callUser(name: string, video = false) {
   if (state.status !== "idle") return;
   unlockAudio();
-  if (!(await mic())) return;
+  if (!(await mic(video))) return;
   iAmCaller = true;
   send({ t: "invite", to: name });
 }
@@ -260,6 +274,41 @@ export function toggleMute() {
   const next = !state.muted;
   local?.getAudioTracks().forEach((t) => { t.enabled = !next; });
   set({ muted: next });
+}
+async function startCamera(track: MediaStreamTrack) {
+  if (!vTx) { track.stop(); return; }
+  try {
+    try { // потолок скорости видео: бережём канал сервера, если разговор идёт через резервный маршрут
+      const p = vTx.sender.getParameters();
+      if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+      p.encodings[0].maxBitrate = 900000;
+      await vTx.sender.setParameters(p);
+    } catch { /* необязательно */ }
+    await vTx.sender.replaceTrack(track);
+    camTrack = track;
+    set({ cam: true, localVideo: new MediaStream([track]) });
+    send({ t: "signal", id: state.id, data: { type: "cam", on: true } });
+  } catch { track.stop(); set({ error: "cam" }); }
+}
+async function attachStartCam() {
+  const t = startCam; startCam = null;
+  if (!t) return;
+  if (state.status === "active") await startCamera(t); else t.stop();
+}
+/** Включить или выключить камеру во время разговора */
+export async function toggleCam() {
+  if (state.status !== "active" || !vTx) return;
+  if (camTrack) {
+    try { await vTx.sender.replaceTrack(null); } catch { /* уже закрыто */ }
+    camTrack.stop(); camTrack = null;
+    set({ cam: false, localVideo: null });
+    send({ t: "signal", id: state.id, data: { type: "cam", on: false } });
+    return;
+  }
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ video: CAM, audio: false });
+    await startCamera(st.getVideoTracks()[0]);
+  } catch { set({ error: "cam" }); }
 }
 export function clearCallError() { set({ error: "" }); }
 
@@ -283,6 +332,7 @@ export function callError(code: string, ru: boolean): string {
     not_found: ["Звонок этому пользователю недоступен", "This user cannot be called"],
     slow_down: ["Слишком много звонков, попробуйте позже", "Too many calls, try again later"],
     overloaded: ["Сервис звонков перегружен, попробуйте позже", "Calls are busy, try again later"],
+    cam: ["Нет доступа к камере. Разрешите её в настройках браузера", "No camera access. Allow it in your browser settings"],
     network: ["Не удалось соединиться. Проверьте сеть", "Could not connect. Check your network"],
     other_tab: ["Звонки открыты в другой вкладке", "Calls are open in another tab"],
     auth: ["Войдите на сайт", "Please sign in"],

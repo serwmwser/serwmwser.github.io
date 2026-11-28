@@ -1,6 +1,6 @@
 "use client";
 // Страница-витрина сообщества (как «About» на Skool): слева галерея (видео и картинки) и описание, справа карточка с кнопкой вступления.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import LoginPrompt from "./LoginPrompt";
 import PayButton from "./PayButton";
@@ -8,7 +8,7 @@ import { useApp } from "@/lib/ctx";
 import { useSocial } from "@/lib/social";
 import { BASE } from "@/lib/urls";
 import {
-  communityError, communityUrl, fromPrice, getCommunity, joinCommunity, leaveCommunity, MAIN_SLUG, mediaSrc, periodText, priceText, trialText,
+  communityError, communityUrl, fromPrice, getCommunity, joinCommunity, leaveCommunity, MAIN_SLUG, mediaSrc, payRub, payStatus, periodText, planPriceText, trialText,
   type Community,
 } from "@/lib/communities";
 import { getRef, payMember } from "@/lib/pay";
@@ -26,7 +26,7 @@ export default function CommunityAbout({ c, onChange }: { c: Community; onChange
   const main = c.slug === MAIN_SLUG;
   const media = c.media || [];
   const [idx, setIdx] = useState(0);
-  const [sel, setSel] = useState<number>(() => c.plans.find((p) => p.price > 0)?.id ?? c.plans[0]?.id ?? 0);
+  const [sel, setSel] = useState<number>(() => c.plans.find((p) => p.price > 0 || (p.priceRub ?? 0) > 0)?.id ?? c.plans[0]?.id ?? 0);
   const [busy, setBusy] = useState(false);
   const cur = media[Math.min(idx, Math.max(0, media.length - 1))];
   const plan = c.plans.find((p) => p.id === sel) || c.plans[0];
@@ -39,6 +39,33 @@ export default function CommunityAbout({ c, onChange }: { c: Community; onChange
     finally { setBusy(false); }
   }
   const refresh = () => { getCommunity(token, c.slug).then(onChange).catch(() => { /* обновится при следующем заходе */ }); };
+
+  /** Оплата в рублях: сервер создаёт платёж ЮKassa (СБП), переходим на страницу оплаты */
+  async function payInRub(id: number) {
+    setBusy(true);
+    try { const r = await payRub(token, id, getRef(c.slug)); window.location.href = r.url; }
+    catch (e) { toast(communityError((e as Error).message, ru), "err"); setBusy(false); }
+  }
+  /** Вернулись с оплаты (?paid=…): спрашиваем у сервера статус и открываем доступ */
+  useEffect(() => {
+    let id = "";
+    try { id = new URLSearchParams(window.location.search).get("paid") || ""; } catch { /* нет адреса */ }
+    if (!id || !token) return;
+    let stop = false;
+    const clean = () => { try { const u = new URL(window.location.href); u.searchParams.delete("paid"); window.history.replaceState(null, "", u.toString()); } catch { /* не страшно */ } };
+    (async () => {
+      for (let i = 0; i < 12 && !stop; i++) {
+        try {
+          const r = await payStatus(token, id);
+          if (r.status === "paid") { toast(ru ? "Оплата прошла, доступ открыт" : "Payment received, access granted", "ok"); clean(); refresh(); return; }
+          if (r.status === "canceled" || r.status === "failed") { toast(ru ? "Платёж не прошёл" : "Payment failed", "err"); clean(); return; }
+        } catch { /* повторим */ }
+        await new Promise((res) => setTimeout(res, 2500));
+      }
+    })();
+    return () => { stop = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
   const copyLink = () => {
     try { void navigator.clipboard.writeText(window.location.origin + communityUrl(c.slug)); toast(ru ? "Ссылка скопирована" : "Link copied", "ok"); }
     catch { toast(window.location.origin + communityUrl(c.slug), "info"); }
@@ -155,19 +182,29 @@ export default function CommunityAbout({ c, onChange }: { c: Community; onChange
                       className={`flex w-full items-center justify-between gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm ${p.id === sel ? "border-blue-500" : "border-black/15 dark:border-white/20"}`}
                     >
                       <span className="font-semibold">{p.name}</span>
-                      <span>{priceText(p.price, ru)}{p.price > 0 ? ` ${periodText(p.period, ru)}` : ""}</span>
+                      <span>{planPriceText(p, ru)}{p.price > 0 || (p.priceRub ?? 0) > 0 ? ` ${periodText(p.period, ru)}` : ""}</span>
                     </button>
                   ))}
                 </div>
               )}
-              {plan && plan.price > 0 ? (
+              {plan && (plan.price > 0 || (plan.priceRub ?? 0) > 0) ? (
                 <>
-                  <PayButton
-                    className="btn btn-primary w-full" price={plan.price} payKey={`member_${c.slug}_${plan.id}`}
-                    label={`${ru ? "Вступить" : "Join"} · ${plan.price} USDC ${periodText(plan.period, ru)}`}
-                    run={(tx) => payMember(token, c.slug, plan.id, tx, getRef(c.slug))} onDone={refresh}
-                  />
-                  {plan.trial > 0 && c.state !== "expired" && (
+                  {(plan.priceRub ?? 0) > 0 && (
+                    <>
+                      <button type="button" className="btn btn-primary w-full" disabled={busy} onClick={() => void payInRub(plan.id)}>
+                        {ru ? "Оплатить" : "Pay"} · {plan.priceRub} ₽ {periodText(plan.period, ru)} · {ru ? "СБП" : "SBP"}
+                      </button>
+                      <p className="text-center text-xs opacity-60">{ru ? "Оплата через СБП (ЮKassa). Доступ откроется сразу после оплаты." : "Paid via SBP (YooKassa). Access opens right after payment."}</p>
+                    </>
+                  )}
+                  {plan.price > 0 && (
+                    <PayButton
+                      className={(plan.priceRub ?? 0) > 0 ? "btn btn-ghost w-full" : "btn btn-primary w-full"} price={plan.price} payKey={`member_${c.slug}_${plan.id}`}
+                      label={`${ru ? "Вступить" : "Join"} · ${plan.price} USDC ${periodText(plan.period, ru)}`}
+                      run={(tx) => payMember(token, c.slug, plan.id, tx, getRef(c.slug))} onDone={refresh}
+                    />
+                  )}
+                  {plan.price > 0 && plan.trial > 0 && c.state !== "expired" && (
                     <button type="button" className="btn btn-ghost w-full !py-2 text-sm" disabled={busy} onClick={() => void act(() => joinCommunity(token, c.slug, plan.id))}>
                       {trialText(plan.trial, ru)}
                     </button>

@@ -5,7 +5,7 @@ import { API_URL } from "./config";
 export const ADS_RU_URL = "https://ads.84-200-80-66.sslip.io";
 
 // Единый вход через HiMeet. Включайте (true) только после того, как на сервере ads-ru установлен приём пропуска (/sso).
-export const ADS_RU_SSO = false;
+export const ADS_RU_SSO = true;
 
 /** Короткий одноразовый пропуск для входа на российскую доску (действует 2 минуты) */
 export async function adsRuPass(token: string): Promise<string> {

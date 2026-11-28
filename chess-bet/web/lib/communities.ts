@@ -95,7 +95,24 @@ export const payStatus = (token: string, id: string) =>
 export const removePlan = (token: string, slug: string, id: number) =>
   call<{ community: Community }>("/api/communities/plan_remove", token, { slug, id }).then((j) => j.community);
 export const listRequests = (token: string, slug: string) =>
-  call<{ items: JoinRequest[] }>(`/api/communities/requests${qs({ slug })}`, token).then((j) => j.items);
+  call<{ items: JoinRequest[] }>(`/api/communities/requests${qs({ slug })}`, token).then((j) => j.items);\n
+export type CommunityMember = {
+  addr: string;
+  name: string | null;
+  role: string;
+  state: "active" | "pending" | "expired" | string;
+  plan: number;
+  planName: string;
+  expires: number;
+  joined: number;
+};
+
+export const listMembers = (token: string, slug: string) =>
+  call<{ items: CommunityMember[] }>(`/api/communities/members${qs({ slug })}`, token).then((j) => j.items);
+
+export const removeMember = (token: string, slug: string, addr: string) =>
+  call<object>("/api/communities/member_remove", token, { slug, addr });
+
 export const decideRequest = (token: string, slug: string, addr: string, approve: boolean) =>
   call<object>("/api/communities/decide", token, { slug, addr, approve });
 

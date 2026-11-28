@@ -249,6 +249,55 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       return out(200, { ok: true, items: [...(main && me ? [main] : []), ...list].map((c) => card(c, viewer)) });
     }
 
+    // Участники сообщества: список доступен владельцу и администратору
+    if (req.method === "GET" && p === "/api/communities/members") {
+      const c = getC(clean(url.searchParams.get("slug"), 30));
+      if (!c) return bad("not_found", 404);
+      if (c.owner !== viewer && !isAdm(viewer)) return bad("forbidden", 403);
+
+      const rows = db.prepare(`
+        SELECT m.addr, m.role, m.state, m.plan, m.expires, m.joined,
+               u.name AS user_name, p.name AS plan_name
+        FROM community_members m
+        LEFT JOIN users u ON lower(u.addr)=lower(m.addr)
+        LEFT JOIN community_plans p ON p.id=m.plan AND p.community=m.community
+        WHERE m.community=? AND m.role!='owner'
+        ORDER BY m.joined DESC
+        LIMIT 200
+      `).all(c.slug) as {
+        addr: string; role: string; state: string; plan: number;
+        expires: number; joined: number; user_name: string | null;
+        plan_name: string | null;
+      }[];
+
+      return out(200, {
+        ok: true,
+        items: rows.map(r => ({
+          addr: r.addr,
+          name: r.user_name || ownerName(r.addr),
+          role: r.role,
+          state: r.state === "pending" ? "pending"
+            : r.expires > 0 && r.expires <= Date.now() ? "expired"
+            : r.state === "active" ? "active" : r.state,
+          plan: r.plan,
+          planName: r.plan_name || (r.plan ? "Тариф удалён" : "Бесплатно"),
+          expires: r.expires,
+          joined: r.joined
+        }))
+      });
+    }
+
+    // Удаление участника владельцем сообщества
+    if (req.method === "POST" && p === "/api/communities/member_remove") {
+      if (!isOwner) return bad("forbidden", 403);
+      if (slug === MAIN) return bad("cannot_remove_main_member");
+      const who = clean(m.addr, 42).toLowerCase();
+      if (!/^0x[0-9a-f]{40}$/.test(who)) return bad("bad_address");
+      if (who === c.owner.toLowerCase()) return bad("owner_cannot_leave");
+      db.prepare("DELETE FROM community_members WHERE community=? AND lower(addr)=?").run(slug, who);
+      return out(200, { ok: true });
+    }
+
     // заявки на вступление: видит владелец сообщества (и администратор)
     if (req.method === "GET" && p === "/api/communities/requests") {
       const c = getC(clean(url.searchParams.get("slug"), 30));

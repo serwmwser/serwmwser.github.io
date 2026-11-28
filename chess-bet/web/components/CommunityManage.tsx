@@ -5,8 +5,8 @@ import { useApp } from "@/lib/ctx";
 import { useSocial } from "@/lib/social";
 import { fileErr, uploadFile } from "@/lib/attach";
 import {
-  addPlan, communityError, decideRequest, getCreatorStats, listFilters, listRequests, periodText, planPriceText, removePlan, trialText, updateCommunity,
-  MAIN_SLUG, type Category, type Community, type CreatorStats, type JoinRequest, type Language, type MediaItem, type PlanPeriod,
+  addPlan, communityError, decideRequest, getCreatorStats, listFilters, listMembers, listRequests, periodText, planPriceText, removeMember, removePlan, trialText, updateCommunity,
+  MAIN_SLUG, type Category, type Community, type CommunityMember, type CreatorStats, type JoinRequest, type Language, type MediaItem, type PlanPeriod,
 } from "@/lib/communities";
 
 const PERIODS: PlanPeriod[] = ["month", "quarter", "year", "lifetime"];
@@ -38,6 +38,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
   const [pRub, setPRub] = useState("");
   const [pTrial, setPTrial] = useState("0");
   const [reqs, setReqs] = useState<JoinRequest[]>([]);
+  const [members, setMembers] = useState<CommunityMember[]>([]);
   const [stats, setStats] = useState<CreatorStats | null>(null);
 
   useEffect(() => { listFilters().then((f) => { setCats(f.categories); setLangs(f.languages); }).catch(() => { /* без списка категорий форма тоже работает */ }); }, []);
@@ -46,6 +47,12 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
     else setReqs([]);
   }, [token, c.slug, c.visibility]);
   useEffect(() => { loadReqs(); }, [loadReqs]);
+
+  const loadMembers = useCallback(() => {
+    if (!isMain) listMembers(token, c.slug).then(setMembers).catch(() => setMembers([]));
+  }, [token, c.slug, isMain]);
+  useEffect(() => { loadMembers(); }, [loadMembers]);
+
   useEffect(() => {
     if (!isMain) getCreatorStats(token, c.slug).then(setStats).catch(() => setStats(null));
   }, [token, c.slug, isMain]);
@@ -89,6 +96,12 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
     setPName(""); setPPrice(""); setPRub(""); setPTrial("0");
   });
   const decide = (addr: string, ok: boolean) => run(async () => { await decideRequest(token, c.slug, addr, ok); loadReqs(); });
+
+  const kickMember = (addr: string) => run(async () => {
+    await removeMember(token, c.slug, addr);
+    loadMembers();
+    toast(ru ? "Участник удалён" : "Member removed", "ok");
+  });
 
   const input = "w-full rounded-xl border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 text-sm";
   const pn = Number(pPrice.replace(",", "."));
@@ -187,6 +200,50 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
           ) : <p className="text-sm opacity-60">{ru ? "Статистика пока недоступна." : "Statistics are not available yet."}</p>}
         </div>
       )}
+      {!isMain && (
+        <div className="space-y-3 border-t border-black/10 dark:border-white/10 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-bold">{ru ? "Участники сообщества" : "Community members"}</h3>
+            <span className="text-xs opacity-60">{members.length} / {ru ? "до 200 записей" : "up to 200 records"}</span>
+          </div>
+          {members.length === 0 && (
+            <p className="text-sm opacity-60">{ru ? "Участников пока нет." : "No members yet."}</p>
+          )}
+          {members.map((m) => {
+            const status = m.state === "active"
+              ? (ru ? "Активен" : "Active")
+              : m.state === "pending"
+                ? (ru ? "Ожидает одобрения" : "Pending")
+                : m.state === "expired"
+                  ? (ru ? "Доступ истёк" : "Expired")
+                  : m.state;
+            return (
+              <div key={m.addr} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black/5 dark:bg-white/5 p-3 text-sm">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="font-semibold break-all">{m.name || m.addr}</div>
+                  <div className="text-xs opacity-60 break-all">{m.addr}</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    <span>{status}</span>
+                    <span>{m.planName}</span>
+                    {m.joined > 0 && <span>{ru ? "Вступил:" : "Joined:"} {new Date(m.joined).toLocaleDateString(ru ? "ru-RU" : "en-GB")}</span>}
+                    {m.expires > 0 && <span>{ru ? "До:" : "Until:"} {new Date(m.expires).toLocaleDateString(ru ? "ru-RU" : "en-GB")}</span>}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost !px-3 !py-1.5 shrink-0"
+                  disabled={busy}
+                  onClick={() => kickMember(m.addr)}
+                >
+                  {ru ? "Удалить" : "Remove"}
+                </button>
+              </div>
+            );
+          })}
+          <p className="text-xs opacity-60">{ru ? "Показаны последние 200 записей участников. Удаление закрывает доступ к сообществу." : "Showing the latest 200 member records. Removing a member revokes community access."}</p>
+        </div>
+      )}
+
       <h3 className="hm-creator-section-title">⚙ {ru ? "Настройки сообщества" : "Community settings"}</h3>
 
       <div className="space-y-3">

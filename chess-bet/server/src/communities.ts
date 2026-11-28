@@ -298,22 +298,43 @@ export async function handleCommunities(req: http.IncomingMessage, res: http.Ser
       const cur = memOf(slug, viewer);
       if (cur && cur.state === "active" && (cur.expires === 0 || cur.expires > Date.now())) return out(200, { ok: true, community: card(c, viewer) });
       if (!ownerActive(c)) return bad("community_paused", 403); // у владельца закончился бесплатный период или оплаченный срок
-      if (c.visibility === "open") {
+      const planId = Number(m.plan) || 0;
+      const availablePlans = plansOf(slug);
+
+      if (c.visibility === "open" && !planId) {
+        // Публичное сообщество без тарифов остаётся бесплатным.
+        // Если тарифы есть, нельзя вступить в обход выбора и оплаты.
+        if (availablePlans.some((x) => x.price_rub > 0 || x.price_micro > 0)) {
+          return bad("plan_required", 400);
+        }
         db.prepare("INSERT OR REPLACE INTO community_members(community,addr,role,state,plan,expires,joined) VALUES(?,?,'member','active',0,0,?)").run(slug, viewer, Date.now());
         return out(200, { ok: true, community: card(c, viewer) });
       }
-      // закрытое сообщество: платный тариф пока не принимается, бесплатно — по заявке
-      const planId = Number(m.plan) || 0;
+
+      let pl: ReturnType<typeof plansOf>[number] | undefined;
       if (planId) {
-        const pl = plansOf(slug).find((x) => x.id === planId);
+        pl = availablePlans.find((x) => x.id === planId);
         if (!pl) return bad("bad_plan");
-        if (pl.price_rub > 0 && pl.price_micro === 0) return bad("payment_required", 402); // рублёвый тариф оплачивается через /api/communities/pay
-        if (pl.price_micro > 0 && pl.trial_days > 0 && !cur) { // пробный период: доступ на N дней без оплаты, один раз на человека
-          db.prepare("INSERT INTO community_members(community,addr,role,state,plan,expires,joined) VALUES(?,?,'member','active',?,?,?)").run(slug, viewer, planId, Date.now() + pl.trial_days * DAY, Date.now());
+
+        if ((pl.price_rub > 0 || pl.price_micro > 0) && pl.trial_days > 0 && !cur) {
+          // Пробный период по выбранному платному тарифу — один раз на человека.
+          db.prepare("INSERT INTO community_members(community,addr,role,state,plan,expires,joined) VALUES(?,?,'member','active',?,?,?)")
+            .run(slug, viewer, planId, Date.now() + pl.trial_days * DAY, Date.now());
           return out(200, { ok: true, community: card(c, viewer) });
         }
-        if (pl.price_micro > 0) return bad("payment_not_supported"); // оплата в USDC будет отдельным этапом
+
+        if (pl.price_rub > 0) return bad("payment_required", 402);
+        if (pl.price_micro > 0) return bad("payment_not_supported", 402);
       }
+
+      if (c.visibility === "open") {
+        // Бесплатный тариф в открытом сообществе.
+        db.prepare("INSERT OR REPLACE INTO community_members(community,addr,role,state,plan,expires,joined) VALUES(?,?,'member','active',?,?,?)")
+          .run(slug, viewer, planId, 0, Date.now());
+        return out(200, { ok: true, community: card(c, viewer) });
+      }
+
+      // В закрытом сообществе бесплатное вступление остаётся по заявке.
       if (cur?.state === "pending") return out(200, { ok: true, community: card(c, viewer) });
       const pend = (db.prepare("SELECT COUNT(*) AS n FROM community_members WHERE addr=? AND state='pending'").get(viewer) as { n: number }).n;
       if (pend >= MAX_PENDING) return bad("too_many_requests");

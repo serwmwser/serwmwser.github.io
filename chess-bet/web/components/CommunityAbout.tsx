@@ -167,7 +167,7 @@ export default function CommunityAbout({ c, onChange }: { c: Community; onChange
             <LoginPrompt text={ru ? "Войдите, чтобы вступить." : "Sign in to join."} />
           ) : c.state === "pending" ? (
             <button type="button" className="btn btn-ghost w-full" disabled>{ru ? "Заявка отправлена" : "Request sent"}</button>
-          ) : c.visibility === "open" ? (
+          ) : c.visibility === "open" && !c.plans.some((p) => p.price > 0 || (p.priceRub ?? 0) > 0) ? (
             <button type="button" className="btn btn-primary w-full" disabled={busy} onClick={() => void act(() => joinCommunity(token, c.slug))}>
               {ru ? "Вступить бесплатно" : "Join for free"}
             </button>

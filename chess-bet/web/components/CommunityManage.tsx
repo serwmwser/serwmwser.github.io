@@ -162,7 +162,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
         <button type="button" className="btn btn-primary" disabled={busy || name.trim().length < 3} onClick={save}>{ru ? "Сохранить" : "Save"}</button>
       </div>
 
-      {!isMain && c.visibility === "closed" && (
+      {!isMain && (
         <div className="space-y-3 border-t border-black/10 dark:border-white/10 pt-4">
           <h3 className="font-bold">{ru ? "Тарифы для участников" : "Member plans"}</h3>
           <p className="text-xs opacity-70">{ru

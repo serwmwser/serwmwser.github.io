@@ -93,9 +93,9 @@ export default function CommunitiesPage() {
     <>
       <Header />
       <SiteNav />
-      <main className="mx-auto max-w-6xl px-3 pt-6 pb-12 space-y-6">
-        <header className="text-center space-y-2">
-          <h1 className="text-3xl sm:text-5xl font-extrabold" style={{ color: "#d4a017" }}>{ru ? "Найдите своё сообщество" : "Discover communities"}</h1>
+      <main className="hm-community-catalog mx-auto max-w-6xl px-3 pt-6 pb-12 space-y-6">
+        <header className="hm-community-catalog-hero text-center space-y-2">
+          <h1 className="hm-community-catalog-title text-3xl sm:text-5xl font-extrabold">{ru ? "Найдите своё сообщество" : "Discover communities"}</h1>
           <p className="text-sm sm:text-base opacity-85">
             {ru ? "или " : "or "}
             <Link href={`${BASE}/communities/new/`} className="underline font-semibold" style={{ color: "#2563eb" }}>{ru ? "создайте своё" : "create your own"}</Link>
@@ -103,7 +103,7 @@ export default function CommunitiesPage() {
         </header>
 
         <div className="mx-auto max-w-2xl">
-          <label className="card !p-0 flex items-center gap-2 px-4">
+          <label className="hm-community-search card !p-0 flex items-center gap-2 px-4">
             <span aria-hidden className="opacity-60">🔍</span>
             <input
               value={q} onChange={(e) => setQ(e.target.value)} type="search" maxLength={40}
@@ -120,7 +120,7 @@ export default function CommunitiesPage() {
           </section>
         )}
 
-        <section aria-label={ru ? "Категории" : "Categories"} className="flex flex-wrap items-center justify-center gap-2">
+        <section aria-label={ru ? "Категории" : "Categories"} className="hm-community-categories flex flex-wrap items-center justify-center gap-2">
           <Chip on={cat === ""} onClick={() => setCat("")}>🔥 {ru ? "Все" : "All"}</Chip>
           {chipCats.map((c) => <Chip key={c.slug} on={cat === c.slug} onClick={() => setCat(cat === c.slug ? "" : c.slug)}>{c.icon} {ru ? c.ru : c.en}</Chip>)}
           {cats.length > CHIPS_SHOWN && <Chip on={false} onClick={() => setMoreCats((v) => !v)}>{moreCats ? (ru ? "Меньше…" : "Less…") : (ru ? "Ещё…" : "More…")}</Chip>}
@@ -170,7 +170,7 @@ export default function CommunitiesPage() {
               <Link href={`${BASE}/communities/new/`} className="underline">{ru ? "создайте такое сообщество сами" : "create this community yourself"}</Link>.</p>
           </div>
         )}
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label={ru ? "Сообщества" : "Communities"}>
+        <section className="hm-community-results grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label={ru ? "Сообщества" : "Communities"}>
           {shown.map((c) => <CommunityCard key={c.slug} c={c} cats={catMap} />)}
         </section>
 

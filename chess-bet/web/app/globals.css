@@ -525,3 +525,72 @@ main p {
   main button { transition: none !important; }
 }
 /* End HiMeet community UI refresh v1 */
+
+
+/* HiMeet Creator Studio and Marketplace v2 */
+
+/* Marketplace catalogue */
+.hm-community-catalog { padding-top: 30px; }
+.hm-community-catalog-hero { position: relative; padding: 28px 20px 24px; border: 1px solid rgba(124,58,237,.12); border-radius: 26px; background: linear-gradient(125deg,rgba(237,233,254,.78),rgba(250,245,255,.92) 55%,rgba(224,231,255,.72)); box-shadow: 0 12px 34px rgba(48,25,85,.055); }
+.hm-community-catalog-title { color: #442078; letter-spacing: -.045em; }
+.hm-community-catalog-hero p { color: #716181; }
+.hm-community-search.card { max-width: 760px; min-height: 58px; border-radius: 17px; border-color: rgba(124,58,237,.17); box-shadow: 0 9px 26px rgba(48,25,85,.06); }
+.hm-community-search input { min-width: 0; color: #34244b; }
+.hm-community-search input::placeholder { color: #998eaa; }
+.hm-community-categories { gap: 9px; }
+.hm-community-categories .chip { border: 1px solid rgba(124,58,237,.12); background: rgba(255,255,255,.84); color: #5b4775; }
+.hm-community-categories .chip-on { border-color: transparent; color: white; }
+.hm-community-results { align-items: stretch; }
+.dark .hm-community-catalog-hero { background: linear-gradient(125deg,rgba(91,33,182,.24),rgba(46,27,73,.8) 55%,rgba(49,46,129,.30)); border-color: rgba(196,181,253,.16); }
+.dark .hm-community-catalog-title { color: #f3e8ff; }
+.dark .hm-community-catalog-hero p { color: #c9bbdc; }
+.dark .hm-community-search.card { background: rgba(27,20,45,.92); border-color: rgba(196,181,253,.17); }
+.dark .hm-community-search input { color: #f5efff; }
+.dark .hm-community-search input::placeholder { color: #a99bbd; }
+.dark .hm-community-categories .chip { background: rgba(255,255,255,.06); color: #e6dcf3; border-color: rgba(196,181,253,.14); }
+
+/* Community creation studio */
+.hm-community-create { padding-top: 26px; }
+.hm-community-create-hero { padding: 26px 28px; border: 1px solid rgba(124,58,237,.13); border-radius: 25px; background: linear-gradient(130deg,rgba(237,233,254,.75),rgba(255,255,255,.91) 58%,rgba(224,231,255,.58)); box-shadow: 0 10px 30px rgba(48,25,85,.05); }
+.hm-community-create-title { letter-spacing: -.04em; }
+.hm-founder-benefit { padding: 17px; border: 1px solid rgba(16,185,129,.22); border-radius: 18px; background: rgba(236,253,245,.74); }
+.hm-creator-presentation iframe { border-radius: 20px; box-shadow: 0 12px 32px rgba(42,22,76,.08); }
+.hm-creator-pricing { padding: 20px; border: 1px solid rgba(124,58,237,.12); border-radius: 22px; background: rgba(255,255,255,.62); }
+.hm-creator-plan-card.card { border: 1px solid rgba(124,58,237,.16); border-radius: 19px; background: rgba(255,255,255,.95); }
+.hm-community-create-form.card { padding: 22px; border: 1px solid rgba(124,58,237,.17); border-radius: 24px; box-shadow: 0 14px 36px rgba(48,25,85,.07); }
+.hm-community-create-form input, .hm-community-create-form textarea, .hm-community-create-form select { min-height: 44px; border: 1px solid rgba(124,58,237,.18); border-radius: 12px; background: rgba(250,248,255,.82); padding: 10px 12px; transition: border-color .18s, box-shadow .18s; }
+.hm-community-create-form textarea { min-height: 100px; }
+.hm-community-create-form input:focus, .hm-community-create-form textarea:focus, .hm-community-create-form select:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.13); }
+.hm-community-create-form label > span:first-child, .hm-community-create-form .font-semibold { color: #49365f; }
+.dark .hm-community-create-hero { background: linear-gradient(130deg,rgba(91,33,182,.22),rgba(29,21,47,.88) 58%,rgba(49,46,129,.22)); border-color: rgba(196,181,253,.15); }
+.dark .hm-founder-benefit { background: rgba(6,78,59,.20); border-color: rgba(52,211,153,.22); }
+.dark .hm-creator-pricing { background: rgba(25,19,42,.58); border-color: rgba(196,181,253,.14); }
+.dark .hm-creator-plan-card.card { background: rgba(29,21,47,.92); border-color: rgba(196,181,253,.16); }
+.dark .hm-community-create-form.card { background: rgba(25,19,42,.91); border-color: rgba(196,181,253,.16); }
+.dark .hm-community-create-form input, .dark .hm-community-create-form textarea, .dark .hm-community-create-form select { background: rgba(255,255,255,.055); color: #f5efff; border-color: rgba(196,181,253,.18); }
+.dark .hm-community-create-form label > span:first-child, .dark .hm-community-create-form .font-semibold { color: #e4d8f4; }
+
+/* Creator control panel and dual-currency membership pricing */
+.hm-community-manage.card { padding: 22px; border-radius: 24px; border-color: rgba(124,58,237,.16); box-shadow: 0 13px 34px rgba(48,25,85,.065); }
+.hm-community-manage > h2 { font-size: 1.2rem; letter-spacing: -.025em; color: #442078; }
+.hm-community-manage input, .hm-community-manage textarea, .hm-community-manage select { min-height: 42px; border: 1px solid rgba(124,58,237,.17); border-radius: 12px; padding: 9px 11px; background: rgba(250,248,255,.75); }
+.hm-community-manage input:focus, .hm-community-manage textarea:focus, .hm-community-manage select:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
+.hm-community-plans { padding-top: 20px; }
+.hm-community-plans > h3 { font-size: 1.05rem; color: #442078; }
+.hm-community-plan-prices { padding: 14px; border: 1px solid rgba(124,58,237,.13); border-radius: 17px; background: rgba(245,243,255,.62); }
+.hm-community-plan-prices input[placeholder*="USDC"] { border-color: rgba(99,102,241,.28); }
+.hm-community-plan-prices input[placeholder*="RUB"], .hm-community-plan-prices input[placeholder*="₽"] { border-color: rgba(16,185,129,.30); }
+.hm-community-requests { padding-top: 20px; }
+.hm-community-manage .btn-primary { min-height: 43px; font-weight: 800; }
+.dark .hm-community-manage.card { background: rgba(25,19,42,.92); border-color: rgba(196,181,253,.17); }
+.dark .hm-community-manage > h2, .dark .hm-community-plans > h3 { color: #eadcff; }
+.dark .hm-community-manage input, .dark .hm-community-manage textarea, .dark .hm-community-manage select { background: rgba(255,255,255,.055); color: #f5efff; border-color: rgba(196,181,253,.18); }
+.dark .hm-community-plan-prices { background: rgba(109,40,217,.10); border-color: rgba(196,181,253,.15); }
+
+@media (max-width: 640px) {
+  .hm-community-catalog-hero, .hm-community-create-hero { padding: 20px 16px; border-radius: 20px; }
+  .hm-community-create-form.card, .hm-community-manage.card { padding: 16px; border-radius: 19px; }
+  .hm-creator-pricing { padding: 14px; }
+  .hm-community-plan-prices { padding: 10px; }
+  .hm-community-plan-prices { grid-template-columns: minmax(0,1fr); }
+}

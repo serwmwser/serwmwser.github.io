@@ -94,7 +94,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
   const priceOk = rubOk && (usdcOk || (pPrice === "" && pRub !== ""));
 
   return (
-    <section className="card space-y-5" aria-label={ru ? "Управление сообществом" : "Manage community"}>
+    <section className="hm-community-manage card space-y-5" aria-label={ru ? "Управление сообществом" : "Manage community"}>
       <h2 className="text-lg font-bold">⚙ {ru ? "Управление сообществом" : "Manage community"}</h2>
 
       <div className="space-y-3">
@@ -163,7 +163,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
       </div>
 
       {!isMain && (
-        <div className="space-y-3 border-t border-black/10 dark:border-white/10 pt-4">
+        <div className="hm-community-plans space-y-3 border-t border-black/10 dark:border-white/10 pt-4">
           <h3 className="font-bold">{ru ? "Тарифы для участников" : "Member plans"}</h3>
           <p className="text-xs opacity-70">{ru
             ? "Цена в USDC: 0 (бесплатно) или от 1 до 1000. Участники платят в USDC, платформа удерживает комиссию (10% на тарифе «Старт», 3% на «Про»), остальное выплачивается вам по понедельникам за прошлую неделю. Пробный период даёт доступ без оплаты на заданное число дней (один раз на человека)."
@@ -178,7 +178,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
           <p className="text-xs opacity-70">{ru
             ? "Цена в рублях (от 50 до 100 000 ₽): участники платят через СБП (ЮKassa), доступ открывается сразу. Комиссия платформы та же (10% на «Старт», 3% на «Про»), остальное выплачивается по понедельникам за прошлую неделю. Можно указать только рубли, только USDC или обе цены."
             : "Ruble price (50 to 100,000 RUB): members pay via SBP (YooKassa), access opens right away. Same platform fee (10% on Start, 3% on Pro); the rest is paid out on Mondays for the previous week. You can set rubles only, USDC only, or both."}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="hm-community-plan-prices grid gap-2 sm:grid-cols-2">
             <input className={input} placeholder={ru ? "Название тарифа" : "Plan name"} value={pName} maxLength={40} onChange={(e) => setPName(e.target.value)} />
             <select className={input} value={pPeriod} onChange={(e) => setPPeriod(e.target.value as PlanPeriod)}>
               {PERIODS.map((p) => <option key={p} value={p}>{periodText(p, ru)}</option>)}
@@ -192,7 +192,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
       )}
 
       {!isMain && c.visibility === "closed" && (
-        <div className="space-y-2 border-t border-black/10 dark:border-white/10 pt-4">
+        <div className="hm-community-requests space-y-2 border-t border-black/10 dark:border-white/10 pt-4">
           <h3 className="font-bold">{ru ? "Заявки на вступление" : "Join requests"} {reqs.length > 0 && <span className="chip chip-on !py-0">{reqs.length}</span>}</h3>
           {reqs.length === 0 && <div className="text-sm opacity-70">{ru ? "Новых заявок нет." : "No new requests."}</div>}
           {reqs.map((r) => (

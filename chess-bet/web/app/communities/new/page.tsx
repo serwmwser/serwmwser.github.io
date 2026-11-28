@@ -75,15 +75,15 @@ export default function NewCommunityPage() {
     <>
       <Header />
       <SiteNav />
-      <main className="mx-auto max-w-4xl px-3 pt-4 pb-12 space-y-6">
+      <main className="hm-community-create mx-auto max-w-4xl px-3 pt-4 pb-12 space-y-6">
         <Link href={`${BASE}/communities/`} className="text-sm underline opacity-80">← {ru ? "Все сообщества" : "All communities"}</Link>
-        <header className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-violet-900 dark:text-violet-200">{ru ? "Создать сообщество" : "Create a community"}</h1>
-          <p className="text-sm sm:text-base opacity-85">{ru ? "Открытое или закрытое, бесплатное или платное: цену участия (от 1 до 1000 USDC) вы задаёте сами." : "Open or private, free or paid: you set the membership price (1 to 1000 USDC) yourself."}</p>
+        <header className="hm-community-create-hero space-y-2">
+          <h1 className="hm-community-create-title text-2xl sm:text-3xl font-extrabold text-violet-900 dark:text-violet-200">{ru ? "Создать сообщество" : "Create a community"}</h1>
+          <p className="text-sm sm:text-base opacity-85">{ru ? "Открытое или закрытое, бесплатное или платное. В настройках клуба можно добавить цену в рублях через СБП, в USDC через Polygon или указать обе валюты." : "Open or private, free or paid. In your club settings you can add a RUB price via SBP, a USDC price via Polygon, or offer both currencies."}</p>
         </header>
 
         {pr && pr.ready && (
-          <div id="founder-benefit" className="space-y-2">
+          <div id="founder-benefit" className="hm-founder-benefit space-y-2">
             <p className="rounded-2xl border-2 border-emerald-600 bg-emerald-50 px-4 py-3 text-base font-semibold text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100">
               🎁 {freeText}
             </p>
@@ -94,7 +94,7 @@ export default function NewCommunityPage() {
           </div>
         )}
 
-        <section className="space-y-2" aria-label={ru ? "Презентация для создателей" : "Presentation for creators"}>
+        <section className="hm-creator-presentation space-y-2" aria-label={ru ? "Презентация для создателей" : "Presentation for creators"}>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-bold">{ru ? "Почему стоит открыть клуб на HiMeet" : "Why open a club on HiMeet"}</h2>
             <a href={`${BASE}/creators.html?lang=${ru ? "ru" : "en"}`} target="_blank" rel="noopener" className="btn btn-ghost !py-1.5 text-sm ms-auto">{ru ? "Открыть на весь экран ↗" : "Open full screen ↗"}</a>
@@ -106,7 +106,7 @@ export default function NewCommunityPage() {
         </section>
 
         {pr && pr.ready && (
-          <section className="space-y-3" aria-label={ru ? "Тарифы создателя" : "Creator plans"}>
+          <section className="hm-creator-pricing space-y-3" aria-label={ru ? "Тарифы создателя" : "Creator plans"}>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-bold">{ru ? "Тарифы" : "Plans"}</h2>
               <div className="ms-auto flex gap-2">
@@ -116,7 +116,7 @@ export default function NewCommunityPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {pr.plans.map((p) => (
-                <div key={p.id} className="card space-y-2">
+                <div key={p.id} className="hm-creator-plan-card card space-y-2">
                   <h3 className="text-lg font-extrabold">{ru ? p.name[0] : p.name[1]}</h3>
                   <p className="text-2xl font-extrabold">{year ? p.year : p.month} <span className="text-sm font-semibold opacity-70">USDC {year ? (ru ? "/ год" : "/ year") : ru ? "/ мес." : "/ mo"}</span></p>
                   <ul className="space-y-1 text-sm">
@@ -139,7 +139,7 @@ export default function NewCommunityPage() {
             <TrialBanner sub={pr!.sub} onPaid={load} />
           </section>
         ) : pr && pr.canCreate ? (
-          <section className="card space-y-4" aria-label={ru ? "Новое сообщество" : "New community"}>
+          <section className="hm-community-create-form card space-y-4" aria-label={ru ? "Новое сообщество" : "New community"}>
             <h2 className="text-lg font-bold">{ru ? "Новое сообщество" : "New community"}</h2>
             <label className="block space-y-1 text-sm">
               <span className="font-semibold">{ru ? "Название" : "Name"}</span>

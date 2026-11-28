@@ -81,17 +81,137 @@ export default function Landing({ onStart }: { onStart: () => void }) {
       {/* Выгода для создателей: самая первая строка */}
       <FounderBanner className="mx-4 mb-4 mt-4 max-w-6xl lg:mx-auto" />
 
-      {/* Главный экран */}
-      <section className="mx-4 max-w-6xl rounded-3xl px-5 py-14 text-center text-white sm:py-20 lg:mx-auto" style={{ background: "linear-gradient(135deg,#1e1b4b 0%,#6d28d9 45%,#ec4899 100%)" }}>
-        <h1 className="mx-auto max-w-3xl text-3xl font-extrabold leading-tight sm:text-5xl">{ru ? "Мессенджер, где вас понимают на любом языке" : "A messenger where everyone understands you in any language"}</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-sm opacity-95 sm:text-lg">
-          {ru ? "Общайтесь с людьми со всего мира на своём языке: перевод встроен в каждый чат. Один профиль для сообщений, звонков, клубов, объявлений и игр. Создайте платный клуб и зарабатывайте: автор из России может продавать клуб иностранной аудитории, и его поймут." : "Talk to people from all over the world in your own language: translation is built into every chat. One profile for messages, calls, clubs, classifieds and games. Start a paid club and earn: an author from any country can sell a club to a foreign audience and be understood."}
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <button type="button" className="btn btn-primary !px-6 !py-3 text-base" onClick={onStart}>{ru ? "Начать" : "Get started"}</button>
-          <Link href={COMMUNITIES} className="btn !px-6 !py-3 text-base bg-white/15 text-white hover:bg-white/25">{ru ? "Смотреть сообщества" : "Browse communities"}</Link>
+      {/* Главный экран: главный оффер для авторов сообществ */}
+      <section
+        className="relative isolate mx-4 max-w-6xl overflow-hidden rounded-[2rem] px-6 py-10 text-white shadow-2xl sm:px-10 sm:py-14 lg:mx-auto lg:px-14 lg:py-16"
+        style={{ background: "linear-gradient(120deg,#17113f 0%,#4c1d95 52%,#9333ea 100%)" }}
+      >
+        <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-400/25 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/3 h-72 w-72 rounded-full bg-cyan-300/15 blur-3xl" />
+
+        <div className="relative grid gap-10 lg:grid-cols-[1.08fr_.92fr] lg:items-center">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-bold tracking-wider text-white/90">
+              <span>✦</span>
+              {ru ? "ПЛАТНЫЕ И БЕСПЛАТНЫЕ СООБЩЕСТВА" : "PAID AND FREE COMMUNITIES"}
+            </div>
+
+            <h1 className="mt-6 max-w-2xl text-4xl font-black leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+              {ru ? "Создайте сообщество. Зарабатывайте на своих знаниях." : "Build your community. Earn from what you know."}
+            </h1>
+
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">
+              {ru
+                ? "Запустите собственный клуб, объединяйте людей со всего мира, устанавливайте цену подписки и принимайте оплату за доступ к вашему контенту."
+                : "Launch your own club, bring people together from around the world, set a membership price and accept payments for access to your content."}
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href={CREATE}
+                className="btn rounded-full bg-white !px-6 !py-3 text-base font-extrabold text-violet-900 shadow-lg hover:bg-violet-50"
+              >
+                {ru ? "＋ Создать своё сообщество" : "＋ Create your community"}
+              </Link>
+
+              <Link
+                href={COMMUNITIES}
+                className="btn rounded-full border border-white/35 bg-white/10 !px-6 !py-3 text-base font-bold text-white hover:bg-white/20"
+              >
+                {ru ? "Посмотреть клубы →" : "Explore communities →"}
+              </Link>
+            </div>
+
+            <p className="mt-5 text-xs leading-relaxed text-white/65">
+              {ru
+                ? "Вы сами задаёте формат и стоимость доступа. Можно создать бесплатное или платное сообщество."
+                : "You choose the format and membership price. Create a free or paid community."}
+            </p>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-md">
+            <div aria-hidden="true" className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-pink-400/30 to-cyan-300/20 blur-xl" />
+
+            <div className="relative rounded-[1.75rem] border border-white/20 bg-slate-950/35 p-3 shadow-2xl backdrop-blur-xl sm:p-4">
+              <div className="flex items-center justify-between gap-3 px-2 py-2">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-pink-400 to-violet-500 text-2xl">
+                    👥
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold tracking-widest text-white/60">
+                      {ru ? "ПРИМЕР СООБЩЕСТВА" : "COMMUNITY PREVIEW"}
+                    </p>
+                    <p className="font-bold text-white">
+                      {ru ? "Страница вашего клуба" : "Your club page"}
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-[10px] font-bold text-emerald-300">
+                  HiMeet
+                </span>
+              </div>
+
+              <div className="mt-3 rounded-2xl bg-white p-5 text-slate-900">
+                <div className="flex h-32 flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-violet-600 via-purple-500 to-pink-400 p-4 text-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl">🌍</span>
+                    <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold">
+                      COMMUNITY
+                    </span>
+                  </div>
+                  <p className="text-xl font-black">
+                    {ru ? "Мир ваших идей" : "A world of ideas"}
+                  </p>
+                </div>
+
+                <h3 className="mt-5 text-xl font-extrabold">
+                  {ru ? "Клуб по вашим интересам" : "A club around your passion"}
+                </h3>
+
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                  {ru
+                    ? "Делитесь опытом, публикуйте материалы и общайтесь с участниками."
+                    : "Share your knowledge, publish content and connect with members."}
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-violet-50 p-3">
+                    <p className="text-xs text-slate-500">
+                      {ru ? "Доступ" : "Access"}
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-violet-800">
+                      {ru ? "Бесплатный или платный" : "Free or paid"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-pink-50 p-3">
+                    <p className="text-xs text-slate-500">
+                      {ru ? "Стоимость" : "Membership"}
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-pink-700">
+                      {ru ? "Вы задаёте сами" : "Set by you"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-3 text-xs font-semibold">
+                  <span className="text-slate-600">🌐 HiMeet</span>
+                  <span className="text-violet-700">
+                    {ru ? "Ваше пространство" : "Your space"}
+                  </span>
+                </div>
+              </div>
+
+              <p className="px-3 py-3 text-center text-xs text-white/65">
+                {ru ? "Ваш клуб. Ваша аудитория. Ваши правила." : "Your club. Your audience. Your rules."}
+              </p>
+            </div>
+          </div>
         </div>
-        <p className="mt-4 text-xs opacity-80">{ru ? "18+. Доступность функций зависит от законов вашей страны." : "18+. Feature availability depends on the laws of your country."}</p>
+
+        <p className="relative mt-8 border-t border-white/15 pt-5 text-center text-xs text-white/60">
+          18+ · {ru ? "Доступность платежей зависит от страны и применимых правил." : "Payment availability depends on your country and applicable rules."}
+        </p>
       </section>
 
       {/* Реклама: блок виден, только когда есть активная реклама */}

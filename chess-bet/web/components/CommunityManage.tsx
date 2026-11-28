@@ -5,8 +5,8 @@ import { useApp } from "@/lib/ctx";
 import { useSocial } from "@/lib/social";
 import { fileErr, uploadFile } from "@/lib/attach";
 import {
-  addPlan, communityError, decideRequest, listFilters, listRequests, periodText, planPriceText, removePlan, trialText, updateCommunity,
-  MAIN_SLUG, type Category, type Community, type JoinRequest, type Language, type MediaItem, type PlanPeriod,
+  addPlan, communityError, decideRequest, getCreatorStats, listFilters, listRequests, periodText, planPriceText, removePlan, trialText, updateCommunity,
+  MAIN_SLUG, type Category, type Community, type CreatorStats, type JoinRequest, type Language, type MediaItem, type PlanPeriod,
 } from "@/lib/communities";
 
 const PERIODS: PlanPeriod[] = ["month", "quarter", "year", "lifetime"];
@@ -38,6 +38,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
   const [pRub, setPRub] = useState("");
   const [pTrial, setPTrial] = useState("0");
   const [reqs, setReqs] = useState<JoinRequest[]>([]);
+  const [stats, setStats] = useState<CreatorStats | null>(null);
 
   useEffect(() => { listFilters().then((f) => { setCats(f.categories); setLangs(f.languages); }).catch(() => { /* без списка категорий форма тоже работает */ }); }, []);
   const loadReqs = useCallback(() => {
@@ -45,6 +46,9 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
     else setReqs([]);
   }, [token, c.slug, c.visibility]);
   useEffect(() => { loadReqs(); }, [loadReqs]);
+  useEffect(() => {
+    if (!isMain) getCreatorStats(token, c.slug).then(setStats).catch(() => setStats(null));
+  }, [token, c.slug, isMain]);
 
   const run = async (f: () => Promise<void>) => {
     if (busy) return;
@@ -124,6 +128,65 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
           </div>
         </div>
       </div>
+      {!isMain && (
+        <div className="space-y-4 rounded-2xl border border-black/10 dark:border-white/10 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-bold">{ru ? "Финансы и аудитория" : "Revenue & audience"}</h3>
+            <span className="text-xs opacity-60">{ru ? "Только подтверждённые платежи" : "Confirmed payments only"}</span>
+          </div>
+          {stats ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl bg-black/5 dark:bg-white/5 p-3">
+                  <strong className="block text-xl">{stats.members}</strong>
+                  <span className="text-xs opacity-70">{ru ? "Активных участников" : "Active members"}</span>
+                </div>
+                <div className="rounded-xl bg-black/5 dark:bg-white/5 p-3">
+                  <strong className="block text-xl">{stats.paidMembers}</strong>
+                  <span className="text-xs opacity-70">{ru ? "Платящих участников" : "Paid members"}</span>
+                </div>
+                <div className="rounded-xl bg-black/5 dark:bg-white/5 p-3">
+                  <strong className="block text-xl">{stats.usdc.last30.toFixed(2)} USDC</strong>
+                  <span className="text-xs opacity-70">{ru ? "Доход за 30 дней" : "30-day income"}</span>
+                </div>
+                <div className="rounded-xl bg-black/5 dark:bg-white/5 p-3">
+                  <strong className="block text-xl">{stats.rub.last30.toLocaleString("ru-RU")} ₽</strong>
+                  <span className="text-xs opacity-70">{ru ? "Доход за 30 дней" : "30-day income"}</span>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-black/5 dark:bg-white/5 p-3 space-y-1 text-sm">
+                  <b>USDC · Polygon</b>
+                  <div>{ru ? "Доход всего" : "Lifetime income"}: <b>{stats.usdc.earned.toFixed(2)} USDC</b></div>
+                  <div>{ru ? "Ожидает выплаты" : "Pending payout"}: {stats.usdc.pending.toFixed(2)} USDC</div>
+                  <div>{ru ? "Выплачено" : "Paid out"}: {stats.usdc.paid.toFixed(2)} USDC</div>
+                  <div className="text-xs opacity-60">{ru ? "Комиссия платформы" : "Platform fee"}: {stats.usdc.fee.toFixed(2)} USDC</div>
+                </div>
+                <div className="rounded-xl bg-black/5 dark:bg-white/5 p-3 space-y-1 text-sm">
+                  <b>Рубли · ЮKassa / СБП</b>
+                  <div>{ru ? "Доход всего" : "Lifetime income"}: <b>{stats.rub.earned.toLocaleString("ru-RU")} ₽</b></div>
+                  <div>{ru ? "Ожидает выплаты" : "Pending payout"}: {stats.rub.pending.toLocaleString("ru-RU")} ₽</div>
+                  <div>{ru ? "Выплачено" : "Paid out"}: {stats.rub.paid.toLocaleString("ru-RU")} ₽</div>
+                  <div className="text-xs opacity-60">{ru ? "Комиссия платформы" : "Platform fee"}: {stats.rub.fee.toLocaleString("ru-RU")} ₽</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <b className="text-sm">{ru ? "Последние платежи" : "Recent payments"}</b>
+                {stats.history.length === 0 && <p className="text-sm opacity-60">{ru ? "Подтверждённых платежей пока нет." : "No confirmed payments yet."}</p>}
+                {stats.history.map((h, i) => (
+                  <div key={`${h.currency}-${h.at}-${i}`} className="flex flex-wrap items-center justify-between gap-2 border-t border-black/10 dark:border-white/10 pt-2 text-sm">
+                    <span className="min-w-0">
+                      <b>{h.amount.toLocaleString("ru-RU")} {h.currency === "USDC" ? "USDC" : "₽"}</b>
+                      <span className="ml-2 text-xs opacity-60">{h.plan}</span>
+                    </span>
+                    <span className="text-xs opacity-60">{new Date(h.at).toLocaleDateString(ru ? "ru-RU" : "en-GB")}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : <p className="text-sm opacity-60">{ru ? "Статистика пока недоступна." : "Statistics are not available yet."}</p>}
+        </div>
+      )}
       <h3 className="hm-creator-section-title">⚙ {ru ? "Настройки сообщества" : "Community settings"}</h3>
 
       <div className="space-y-3">

@@ -163,6 +163,78 @@ export async function handlePay(req: http.IncomingMessage, res: http.ServerRespo
       return out(200, { ok: true, plan: s && s.expires > Date.now() ? s.plan : "", expires: s?.expires ?? 0 });
     }
 
+    if (req.method === "GET" && p === "/api/pay/community_stats") {
+      const slug = clean(url.searchParams.get("slug"), 30).toLowerCase();
+      const c = getC(slug);
+      if (!c) return bad("not_found", 404);
+      if (c.owner !== viewer && !adm) return bad("forbidden", 403);
+
+      const now = Date.now(), since = now - 30 * DAY;
+      const round = (n: number) => Math.round(n * 1e6) / 1e6;
+      const members = (db.prepare(
+        "SELECT COUNT(*) AS n FROM community_members WHERE community=? AND state='active' AND (expires=0 OR expires>?)"
+      ).get(slug, now) as { n: number }).n;
+      const paidMembers = (db.prepare(
+        "SELECT COUNT(*) AS n FROM community_members WHERE community=? AND state='active' AND plan>0 AND (expires=0 OR expires>?)"
+      ).get(slug, now) as { n: number }).n;
+
+      const usdc = db.prepare(`
+        SELECT COALESCE(SUM(gross),0) gross, COALESCE(SUM(fee),0) fee,
+          COALESCE(SUM(to_owner),0) earned,
+          COALESCE(SUM(CASE WHEN created>=? THEN to_owner ELSE 0 END),0) last30
+        FROM pay_in WHERE kind='member' AND community=?
+      `).get(since, slug) as { gross:number; fee:number; earned:number; last30:number };
+      const usdcPending = (db.prepare(
+        "SELECT COALESCE(SUM(amount),0) n FROM pay_out WHERE community=? AND role='owner' AND status='pending'"
+      ).get(slug) as { n:number }).n;
+      const usdcPaid = (db.prepare(
+        "SELECT COALESCE(SUM(amount),0) n FROM pay_out WHERE community=? AND role='owner' AND status='paid'"
+      ).get(slug) as { n:number }).n;
+
+      let rub = { gross:0, fee:0, earned:0, last30:0, pending:0, paid:0 };
+      let rubHistory: { currency:string; amount:number; fee:number; at:number; payer:string; plan:string }[] = [];
+      try {
+        rub = db.prepare(`
+          SELECT COALESCE(SUM(rub),0) gross, COALESCE(SUM(fee),0) fee,
+            COALESCE(SUM(share),0) earned,
+            COALESCE(SUM(CASE WHEN paid_at>=? THEN share ELSE 0 END),0) last30,
+            COALESCE(SUM(CASE WHEN payout_at=0 THEN share ELSE 0 END),0) pending,
+            COALESCE(SUM(CASE WHEN payout_at>0 THEN share ELSE 0 END),0) paid
+          FROM member_pay WHERE community=? AND status='paid'
+        `).get(since, slug) as typeof rub;
+        rubHistory = db.prepare(`
+          SELECT mp.rub, mp.fee, mp.paid_at, mp.addr, cp.name
+          FROM member_pay mp LEFT JOIN community_plans cp ON cp.id=mp.plan
+          WHERE mp.community=? AND mp.status='paid'
+          ORDER BY mp.paid_at DESC LIMIT 20
+        `).all(slug).map((r: any) => ({
+          currency:"RUB", amount:r.rub, fee:r.fee, at:r.paid_at, payer:r.addr, plan:r.name || ""
+        }));
+      } catch { /* таблица ЮKassa ещё не создана */ }
+
+      const usdcHistory = db.prepare(`
+        SELECT payer, plan, gross, fee, created FROM pay_in
+        WHERE kind='member' AND community=? ORDER BY created DESC LIMIT 20
+      `).all(slug).map((r: any) => ({
+        currency:"USDC", amount:r.gross / 1e6, fee:r.fee / 1e6,
+        at:r.created, payer:r.payer, plan:r.plan
+      }));
+
+      return out(200, {
+        ok:true, members, paidMembers,
+        usdc:{
+          gross:round(usdc.gross / 1e6), fee:round(usdc.fee / 1e6),
+          earned:round(usdc.earned / 1e6), last30:round(usdc.last30 / 1e6),
+          pending:round(usdcPending / 1e6), paid:round(usdcPaid / 1e6)
+        },
+        rub:{
+          gross:rub.gross, fee:rub.fee, earned:rub.earned, last30:rub.last30,
+          pending:rub.pending, paid:rub.paid
+        },
+        history:[...usdcHistory, ...rubHistory].sort((a,b)=>b.at-a.at).slice(0,20)
+      });
+    }
+
     if (req.method === "GET" && p === "/api/pay/affiliate") { // страница партнёрки платформы: приглашённые создатели
       const now = Date.now();
       const sum = (sql: string, ...a: unknown[]) => ((db.prepare(sql).get(...a) as { s: number | null }).s ?? 0) / 1e6;

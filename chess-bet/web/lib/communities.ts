@@ -156,3 +156,14 @@ export function communityError(code: string, ru: boolean): string {
   const x = t[code];
   return x ? x[ru ? 0 : 1] : ru ? "Не получилось, попробуйте ещё раз" : "Failed, try again";
 }
+
+
+export type CreatorStats = {
+  members: number;
+  paidMembers: number;
+  usdc: { gross:number; fee:number; earned:number; last30:number; pending:number; paid:number };
+  rub: { gross:number; fee:number; earned:number; last30:number; pending:number; paid:number };
+  history: { currency:string; amount:number; fee:number; at:number; payer:string; plan:string }[];
+};
+export const getCreatorStats = (token: string, slug: string) =>
+  call<CreatorStats>("/api/pay/community_stats" + qs({ slug }), token);

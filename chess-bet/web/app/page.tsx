@@ -146,7 +146,7 @@ function AppHome() {
     <>
       <Header />
       <SiteNav />
-      <main className="mx-auto max-w-3xl px-3 pt-4 pb-32">
+      <main className="mx-auto max-w-6xl px-3 pt-5 pb-32 sm:px-5">
         <FaucetBar />
         {openCount > 0 && gid === null && (
           <div className="card mb-4 space-y-2 text-sm">

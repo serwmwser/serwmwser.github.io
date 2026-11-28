@@ -23,7 +23,7 @@ export default function SiteFooter() {
   const ru = lang === "ru";
   const tx = (l: L) => (ru ? l[0] : l[1]);
   return (
-    <footer className="mx-auto w-full max-w-6xl px-4 pb-12 pt-4">
+    <footer className="hm-footer mx-auto w-full max-w-6xl px-4 pb-12 pt-6">
       <div className="grid grid-cols-2 gap-6 border-t border-black/10 dark:border-white/10 pt-8 sm:grid-cols-4">
         {FOOT.map((c) => (
           <nav key={c.title[0]} aria-label={tx(c.title)} className="space-y-2 text-sm">

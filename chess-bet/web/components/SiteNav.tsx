@@ -8,6 +8,7 @@ import { SESSION_EVENT, tokenFor } from "@/lib/social";
 import { useUnread } from "@/lib/dm";
 
 type Item = { href: string; ru: string; en: string; icon: string; also?: string[] };
+
 const ITEMS: Item[] = [
   { href: ROUTES.profile, ru: "Мессенджер", en: "Messenger", icon: "💬", also: [ROUTES.messages, ROUTES.feed, ROUTES.join, ROUTES.exchange, ROUTES.friends, ROUTES.translateChat] },
   { href: ROUTES.communities, ru: "Сообщества", en: "Communities", icon: "👥", also: [ROUTES.community] },
@@ -19,42 +20,46 @@ const ITEMS: Item[] = [
 
 const norm = (p: string) => (p.endsWith("/") ? p : p + "/");
 
-/** Меню разделов сайта: не кнопки, а список-ссылки с иконками (как боковое меню). Столбцами: 2 на телефоне и в приложении, 3 на компьютере.
- * Текущий раздел отмечен цветной полосой и светлым фоном, остальные разделы без рамок: переход по нажатию. */
 export default function SiteNav() {
   const { lang } = useApp();
   const ru = lang === "ru";
   const path = norm(usePathname() || "/");
   const account = useActiveAccount();
   const [token, setToken] = useState("");
+
   useEffect(() => {
-    const r = () => setToken(tokenFor(account?.address));
-    r();
-    window.addEventListener(SESSION_EVENT, r);
-    return () => window.removeEventListener(SESSION_EVENT, r);
+    const refresh = () => setToken(tokenFor(account?.address));
+    refresh();
+    window.addEventListener(SESSION_EVENT, refresh);
+    return () => window.removeEventListener(SESSION_EVENT, refresh);
   }, [account?.address]);
+
   const unread = useUnread(token);
+
   return (
-    <nav aria-label={ru ? "Разделы сайта" : "Site sections"} className="mx-auto max-w-3xl px-3 pt-2">
-      <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5 rounded-2xl border border-slate-300 bg-white p-1.5 shadow-sm dark:border-slate-600 dark:bg-slate-900/80 md:grid-cols-3">
+    <nav
+      aria-label={ru ? "Разделы сайта" : "Site sections"}
+      className="hm-site-nav mx-auto w-full max-w-6xl px-3 pt-3 sm:px-5"
+    >
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
         {ITEMS.map((it) => {
-          const on = [it.href, ...(it.also ?? [])].map((h) => norm(h.split("#")[0])).some((h) => (h === norm(ROUTES.home) ? path === h : path.startsWith(h)));
+          const on = [it.href, ...(it.also ?? [])]
+            .map((h) => norm(h.split("#")[0]))
+            .some((h) => (h === norm(ROUTES.home) ? path === h : path.startsWith(h)));
+
           return (
-            <li key={it.href}>
+            <li key={it.href} className="min-w-0">
               <a
                 href={it.href}
                 aria-current={on ? "page" : undefined}
-                className={`relative flex min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-2 text-sm leading-tight transition md:text-[15px] ${
-                  on
-                    ? "bg-violet-100 font-bold text-violet-800 dark:bg-violet-500/25 dark:text-violet-200"
-                    : "font-medium text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
-                }`}
+                className={`hm-nav-item ${on ? "hm-nav-item-active" : ""}`}
               >
-                {on && <span aria-hidden="true" className="absolute bottom-2 left-0 top-2 w-1 rounded-full bg-violet-600 dark:bg-violet-400" />}
-                <span aria-hidden="true" className="w-6 shrink-0 text-center text-lg">{it.icon}</span>
-                <span className="min-w-0 break-words">{ru ? it.ru : it.en}</span>
+                <span className="hm-nav-icon" aria-hidden="true">{it.icon}</span>
+                <span className="min-w-0 truncate">{ru ? it.ru : it.en}</span>
                 {it.href === ROUTES.profile && unread > 0 && (
-                  <span className="ms-auto inline-flex h-[1.2rem] min-w-[1.2rem] items-center justify-center rounded-full px-1 text-[11px] font-bold" style={{ background: "#e0245e", color: "#fff" }}>{unread > 99 ? "99+" : unread}</span>
+                  <span className="hm-unread-badge">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
                 )}
               </a>
             </li>

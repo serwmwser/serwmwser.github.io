@@ -14,42 +14,77 @@ const allWallets = [
   createWallet("com.trustwallet.app"),
   createWallet("walletConnect"),
 ];
-// Внутри Telegram нет расширений кошельков, а ссылки вида metamask:// окно Telegram не открывает (ошибка ERR_UNKNOWN_URL_SCHEME): там только вход по почте
-/** Только встроенный вход (почта, Google, Apple, Telegram, passkey): подпись в приложении кошелька не нужна */
+
 export const emailWallets = [allWallets[0]];
 export const wallets = inTelegram() ? [inAppWallet({ auth: { options: ["email"] } })] : allWallets;
 
 export default function Header() {
   const { lang, setLang, dark, toggleDark } = useApp();
   const ru = lang === "ru";
+
   return (
-    <header className="glass sticky top-0 z-40 border-x-0 border-t-0">
-      <div className="mx-auto max-w-3xl flex items-center gap-2 px-3 py-2.5">
-        <div className="flex items-center gap-2 font-bold text-lg tracking-tight me-auto">
-          <span className="grid place-items-center w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-violet text-white text-xl">👋</span>
-          <span className="leading-tight">
-            <span className="block">HiMeet</span>
-            <span className="hidden sm:block text-[11px] font-medium opacity-70 max-w-[16rem]">{ru ? "Общение, объявления, знакомства и шахматы" : "Chat, Classifieds, Dating & Chess"}</span>
+    <header className="hm-header sticky top-0 z-40">
+      <div className="hm-header-inner mx-auto flex w-full max-w-6xl items-center gap-2 px-3 py-3 sm:gap-4 sm:px-5">
+        <a href="/" className="hm-brand me-auto flex min-w-0 items-center gap-3" aria-label="HiMeet home">
+          <span className="hm-brand-mark" aria-hidden="true">H</span>
+          <span className="min-w-0">
+            <span className="block text-lg font-black leading-tight tracking-tight">HiMeet</span>
+            <span className="hidden max-w-[18rem] truncate text-[11px] font-medium sm:block">
+              {ru ? "Ваше пространство для общения и сообществ" : "Your space for people and communities"}
+            </span>
           </span>
-        </div>
+        </a>
+
         <select
-          aria-label="Language"
+          aria-label={ru ? "Язык сайта" : "Website language"}
           value={lang}
           onChange={(e) => setLang(e.target.value as Lang)}
-          className="rounded-xl bg-black/5 dark:bg-white/10 px-2 py-2 text-sm outline-none max-w-[72px] sm:max-w-[110px]"
+          className="hm-control max-w-[105px] sm:max-w-[135px]"
         >
-          {Object.entries(LANGS).map(([k, v]) => <option key={k} value={k} className="text-slate-900">{v}</option>)}
+          {Object.entries(LANGS).map(([k, v]) => (
+            <option key={k} value={k} className="text-slate-900">{v}</option>
+          ))}
         </select>
-        <button onClick={toggleDark} aria-label="Theme" className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 text-lg">{dark ? "☀" : "☾"}</button>
-        <span className="hidden min-[400px]:block"><MusicToggle /></span>
+
+        <button
+          type="button"
+          onClick={toggleDark}
+          aria-label={ru ? "Переключить тему" : "Toggle theme"}
+          title={ru ? "Переключить тему" : "Toggle theme"}
+          className="hm-icon-button"
+        >
+          {dark ? "☀" : "☾"}
+        </button>
+
+        <span className="hidden min-[440px]:block">
+          <MusicToggle />
+        </span>
+
         <ConnectButton
           client={client}
           chain={chain}
           wallets={wallets}
           autoConnect={{ timeout: 5000 }}
           theme={dark ? "dark" : "light"}
-          connectButton={{ style: { borderRadius: 14, height: 40, minWidth: 0, padding: "0 14px", fontSize: 14 } }}
-          detailsButton={{ style: { borderRadius: 14, height: 40, minWidth: 0, padding: "0 10px", fontSize: 13 } }}
+          connectButton={{
+            style: {
+              borderRadius: 13,
+              height: 42,
+              minWidth: 0,
+              padding: "0 15px",
+              fontSize: 13,
+              fontWeight: 700,
+            },
+          }}
+          detailsButton={{
+            style: {
+              borderRadius: 13,
+              height: 42,
+              minWidth: 0,
+              padding: "0 12px",
+              fontSize: 13,
+            },
+          }}
           connectModal={{ size: "compact", title: "HiMeet" }}
         />
       </div>

@@ -6,7 +6,7 @@ import { BASE } from "./urls";
 export type Category = { slug: string; ru: string; en: string; icon: string };
 export type Language = { code: string; name: string };
 export type PlanPeriod = "month" | "quarter" | "year" | "lifetime";
-export type CommunityPlan = { id: number; name: string; period: PlanPeriod; price: number; trial: number };
+export type CommunityPlan = { id: number; name: string; period: PlanPeriod; price: number; priceRub?: number; trial: number };
 export type MediaItem = { type: "video" | "image"; url: string; thumb: string };
 /** Тариф создателя: source: paid (оплата), founder (первые 50: 3 месяца бесплатно), trial (14 дней бесплатно) */
 export type CreatorSub = { plan: string; expires: number; source: "paid" | "founder" | "trial"; active: boolean };
@@ -82,8 +82,16 @@ export const createCommunity = (token: string, d: { slug: string; name: string; 
   call<{ community: Community }>("/api/communities/create", token, d).then((j) => j.community);
 export const updateCommunity = (token: string, slug: string, d: { name?: string; descr?: string; about?: string; media?: { type: "video" | "image"; url: string }[]; cover?: string; visibility?: "open" | "closed"; categories?: string[]; language?: string }) =>
   call<{ community: Community }>("/api/communities/update", token, { slug, ...d }).then((j) => j.community);
-export const addPlan = (token: string, slug: string, d: { name: string; period: PlanPeriod; price: number; trial?: number }) =>
-  call<{ community: Community }>("/api/communities/plan_add", token, { slug, ...d }).then((j) => j.community);
+export const addPlan = (token: string, slug: string, d: { name: string; period: PlanPeriod; price: number; priceRub?: number; trial?: number }) => {
+  const { priceRub, ...rest } = d;
+  return call<{ community: Community }>("/api/communities/plan_add", token, { slug, ...rest, price_rub: priceRub || 0 }).then((j) => j.community);
+};
+/** Оплата тарифа клуба в рублях (СБП через ЮKassa): возвращает адрес страницы оплаты. ref — код партнёрской ссылки клуба (необязательно) */
+export const payRub = (token: string, plan: number, ref?: string) =>
+  call<{ id: string; url: string }>("/api/communities/pay", token, { plan, ref: ref || "" });
+/** Статус оплаты после возврата с платёжной страницы: paid / new / canceled / failed */
+export const payStatus = (token: string, id: string) =>
+  call<{ status: string; community: string }>("/api/communities/pay-status" + qs({ id }), token);
 export const removePlan = (token: string, slug: string, id: number) =>
   call<{ community: Community }>("/api/communities/plan_remove", token, { slug, id }).then((j) => j.community);
 export const listRequests = (token: string, slug: string) =>
@@ -103,11 +111,20 @@ export function periodText(p: PlanPeriod, ru: boolean): string {
 export const trialText = (days: number, ru: boolean) => (ru ? `${days} дн. бесплатно` : `${days}-day free trial`);
 /** Цена в USDC или «Бесплатно» */
 export const priceText = (price: number, ru: boolean) => (price > 0 ? `${price} USDC` : ru ? "Бесплатно" : "Free");
-/** Самый дешёвый платный тариф для карточки: «от 10 USDC» */
+/** Цена тарифа: «990 ₽ · 11 USDC», только рубли, только USDC или «Бесплатно» */
+export function planPriceText(p: CommunityPlan, ru: boolean): string {
+  const parts: string[] = [];
+  if ((p.priceRub ?? 0) > 0) parts.push(`${p.priceRub} ₽`);
+  if (p.price > 0) parts.push(`${p.price} USDC`);
+  return parts.length ? parts.join(" · ") : ru ? "Бесплатно" : "Free";
+}
+/** Самый дешёвый платный тариф для карточки: «от 990 ₽» или «от 10 USDC» */
 export function fromPrice(c: Community, ru: boolean): string {
-  const paid = c.plans.filter((p) => p.price > 0).map((p) => p.price);
-  if (!paid.length) return ru ? "Бесплатно" : "Free";
-  return `${ru ? "от" : "from"} ${Math.min(...paid)} USDC`;
+  const usdc = c.plans.filter((p) => p.price > 0).map((p) => p.price);
+  const rub = c.plans.map((p) => p.priceRub ?? 0).filter((v) => v > 0);
+  if (!usdc.length && !rub.length) return ru ? "Бесплатно" : "Free";
+  const from = ru ? "от" : "from";
+  return rub.length ? `${from} ${Math.min(...rub)} ₽` : `${from} ${Math.min(...usdc)} USDC`;
 }
 
 /** Понятный текст ошибки сервера */
@@ -127,6 +144,10 @@ export function communityError(code: string, ru: boolean): string {
     owner_cannot_leave: ["Владелец не может выйти из своего сообщества", "The owner cannot leave their community"],
     slow_down: ["Слишком часто, попробуйте позже", "Too fast, try again later"],
     bad_cover: ["Обложка: ссылка на картинку, начинается с https://", "Cover: an image link starting with https://"],
+    pay_off: ["Оплата в рублях сейчас недоступна", "Ruble payments are unavailable right now"],
+    pay_failed: ["Не удалось создать платёж, попробуйте позже", "Could not create the payment, try again later"],
+    own_community: ["Это ваше сообщество", "This is your own community"],
+    bad_price_rub: ["Цена в рублях: от 50 до 100 000", "Ruble price: from 50 to 100,000"],
     bad_price: ["Цена: бесплатно или от 1 до 1000 USDC", "Price: free or from 1 to 1000 USDC"],
     bad_media: ["Галерея: до 8 элементов; видео только YouTube, Vimeo или RuTube (ссылка https), картинки по ссылке https или загруженные", "Gallery: up to 8 items; videos from YouTube, Vimeo or RuTube only (https link), images by https link or uploaded"],
     too_big: ["Слишком длинный текст", "The text is too long"],

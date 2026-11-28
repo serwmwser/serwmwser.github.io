@@ -5,7 +5,7 @@ import { useApp } from "@/lib/ctx";
 import { useSocial } from "@/lib/social";
 import { fileErr, uploadFile } from "@/lib/attach";
 import {
-  addPlan, communityError, decideRequest, listFilters, listRequests, periodText, priceText, removePlan, trialText, updateCommunity,
+  addPlan, communityError, decideRequest, listFilters, listRequests, periodText, planPriceText, removePlan, trialText, updateCommunity,
   MAIN_SLUG, type Category, type Community, type JoinRequest, type Language, type MediaItem, type PlanPeriod,
 } from "@/lib/communities";
 
@@ -35,6 +35,7 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
   const [pName, setPName] = useState("");
   const [pPeriod, setPPeriod] = useState<PlanPeriod>("month");
   const [pPrice, setPPrice] = useState("");
+  const [pRub, setPRub] = useState("");
   const [pTrial, setPTrial] = useState("0");
   const [reqs, setReqs] = useState<JoinRequest[]>([]);
 
@@ -80,14 +81,17 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
   });
   const add = () => run(async () => {
     const price = Number(pPrice.replace(",", "."));
-    onChange(await addPlan(token, c.slug, { name: pName, period: pPeriod, price: Number.isFinite(price) ? price : -1, trial: Number(pTrial) || 0 }));
-    setPName(""); setPPrice(""); setPTrial("0");
+    onChange(await addPlan(token, c.slug, { name: pName, period: pPeriod, price: Number.isFinite(price) ? price : -1, priceRub: Number(pRub) || 0, trial: Number(pTrial) || 0 }));
+    setPName(""); setPPrice(""); setPRub(""); setPTrial("0");
   });
   const decide = (addr: string, ok: boolean) => run(async () => { await decideRequest(token, c.slug, addr, ok); loadReqs(); });
 
   const input = "w-full rounded-xl border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 text-sm";
   const pn = Number(pPrice.replace(",", "."));
-  const priceOk = pPrice !== "" && Number.isFinite(pn) && (pn === 0 || (pn >= 1 && pn <= 1000)); // цена: бесплатно или от 1 до 1000 USDC
+  const rn = Number(pRub);
+  const rubOk = pRub === "" || (Number.isInteger(rn) && rn >= 50 && rn <= 100000); // рубли: пусто или от 50 до 100 000 ₽
+  const usdcOk = pPrice !== "" && Number.isFinite(pn) && (pn === 0 || (pn >= 1 && pn <= 1000)); // USDC: бесплатно или от 1 до 1000
+  const priceOk = rubOk && (usdcOk || (pPrice === "" && pRub !== ""));
 
   return (
     <section className="card space-y-5" aria-label={ru ? "Управление сообществом" : "Manage community"}>
@@ -167,16 +171,20 @@ export default function CommunityManage({ c, onChange }: { c: Community; onChang
           {c.plans.length === 0 && <div className="text-sm opacity-70">{ru ? "Тарифов пока нет, вступление по заявке." : "No plans yet, people join by request."}</div>}
           {c.plans.map((p) => (
             <div key={p.id} className="flex items-center justify-between gap-2 rounded-2xl bg-black/5 dark:bg-white/5 px-3 py-2 text-sm">
-              <span><b>{p.name}</b> · {priceText(p.price, ru)} {p.price > 0 ? periodText(p.period, ru) : ""}{p.trial > 0 ? ` · ${trialText(p.trial, ru)}` : ""}</span>
+              <span><b>{p.name}</b> · {planPriceText(p, ru)} {p.price > 0 || (p.priceRub ?? 0) > 0 ? periodText(p.period, ru) : ""}{p.trial > 0 ? ` · ${trialText(p.trial, ru)}` : ""}</span>
               <button type="button" className="btn btn-ghost !px-3 !py-1.5" disabled={busy} onClick={() => run(async () => onChange(await removePlan(token, c.slug, p.id)))}>{ru ? "Убрать" : "Remove"}</button>
             </div>
           ))}
+          <p className="text-xs opacity-70">{ru
+            ? "Цена в рублях (от 50 до 100 000 ₽): участники платят через СБП (ЮKassa), доступ открывается сразу. Комиссия платформы та же (10% на «Старт», 3% на «Про»), остальное выплачивается по понедельникам за прошлую неделю. Можно указать только рубли, только USDC или обе цены."
+            : "Ruble price (50 to 100,000 RUB): members pay via SBP (YooKassa), access opens right away. Same platform fee (10% on Start, 3% on Pro); the rest is paid out on Mondays for the previous week. You can set rubles only, USDC only, or both."}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             <input className={input} placeholder={ru ? "Название тарифа" : "Plan name"} value={pName} maxLength={40} onChange={(e) => setPName(e.target.value)} />
             <select className={input} value={pPeriod} onChange={(e) => setPPeriod(e.target.value as PlanPeriod)}>
               {PERIODS.map((p) => <option key={p} value={p}>{periodText(p, ru)}</option>)}
             </select>
             <input className={input} placeholder={ru ? "Цена, USDC (0 = бесплатно)" : "Price, USDC (0 = free)"} inputMode="decimal" value={pPrice} onChange={(e) => setPPrice(e.target.value)} />
+            <input className={input} placeholder={ru ? "Цена, ₽ (через СБП, необязательно)" : "Price, RUB (via SBP, optional)"} inputMode="numeric" value={pRub} onChange={(e) => setPRub(e.target.value.replace(/\D/g, "").slice(0, 6))} />
             <input className={input} placeholder={ru ? "Пробный период, дней" : "Free trial, days"} inputMode="numeric" value={pTrial} onChange={(e) => setPTrial(e.target.value.replace(/\D/g, "").slice(0, 2))} />
           </div>
           <button type="button" className="btn btn-ghost" disabled={busy || pName.trim().length < 2 || !priceOk} onClick={add}>＋ {ru ? "Добавить тариф" : "Add plan"}</button>

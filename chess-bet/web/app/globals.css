@@ -466,3 +466,62 @@ input, textarea, select { @apply outline-none focus-visible:ring-2 focus-visible
   .hm-community-gallery { border-radius: 17px; }
   .hm-community-sidebar.card { border-radius: 19px; }
 }
+
+/* HiMeet community UI refresh v1 */
+:root {
+  --hm-accent: #7657e8;
+  --hm-accent-light: #9a7cff;
+  --hm-border: rgba(118, 87, 232, .18);
+  --hm-surface: #f8f6ff;
+}
+
+.dark {
+  --hm-border: rgba(177, 154, 255, .22);
+  --hm-surface: #211b35;
+}
+
+main h1, main h2 {
+  letter-spacing: -.035em;
+}
+
+main input:not([type="checkbox"]):not([type="radio"]),
+main textarea,
+main select {
+  border-radius: 14px;
+  border-color: var(--hm-border);
+  transition: border-color .2s, box-shadow .2s;
+}
+
+main input:focus,
+main textarea:focus,
+main select:focus {
+  outline: none;
+  border-color: var(--hm-accent) !important;
+  box-shadow: 0 0 0 3px rgba(118, 87, 232, .13);
+}
+
+main button {
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+main button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+main button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+main [class*="rounded-"][class*="border"] {
+  border-color: var(--hm-border);
+}
+
+main p {
+  line-height: 1.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main button { transition: none !important; }
+}
+/* End HiMeet community UI refresh v1 */

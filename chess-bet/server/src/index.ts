@@ -244,9 +244,9 @@ setGuestNotify((to, name) => { if (!isCallOnline(to)) pushTo(to, { title: "💬 
 // Оплачено участие в клубе (рубли): владельцу клуба и администраторам (push + Telegram)
 setMemberPayNotify((e) => {
   const to = [...new Set([e.owner, ...e.admins].map((x) => String(x || "").toLowerCase()).filter(Boolean))];
-  const link = `${SITE_URL}/community/?c=${encodeURIComponent(e.slug)}`;
+  const link = `${SITE_URL}/community/?slug=${encodeURIComponent(e.slug)}`;
   for (const a of to) {
-    pushTo(a, { title: "👥 Новый платный участник " + e.rub + " ₽", body: e.slug + (e.plan ? " · " + e.plan : ""), url: "/community/?c=" + encodeURIComponent(e.slug), tag: "member-" + e.slug + "-" + e.addr });
+    pushTo(a, { title: "👥 Новый платный участник " + e.rub + " ₽", body: e.slug + (e.plan ? " · " + e.plan : ""), url: "/community/?slug=" + encodeURIComponent(e.slug), tag: "member-" + e.slug + "-" + e.addr });
     void tgNotify(a, `👥 Оплачено участие в клубе ${e.slug}: ${e.rub} ₽`, `👥 Club membership paid in ${e.slug}: ${e.rub} RUB`, "mem:" + e.slug + ":" + e.addr + ":" + Math.floor(Date.now() / 60000), link);
   }
 });

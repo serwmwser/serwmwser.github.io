@@ -2,7 +2,7 @@ import { API_URL } from "./config";
 
 // Адрес российской доски объявлений (отдельный проект ads-ru на VPS, он же продаётся как шаблон сайта).
 // Когда DNS ads.himeet.online переключат на VPS, замените адрес на "https://ads.himeet.online".
-export const ADS_RU_URL = "https://ads.84-200-80-66.sslip.io";
+export const ADS_RU_URL = "https://ads.himeet.online";
 
 // Единый вход через HiMeet. Включайте (true) только после того, как на сервере ads-ru установлен приём пропуска (/sso).
 export const ADS_RU_SSO = true;
